@@ -1,6 +1,6 @@
 import React from 'react';
 import { useSelector, useDispatch } from '../../redux/hooks';
-import { getCardId, getCardFromId } from '../../redux/game/util';
+import { getCardId, getCardFromId, getCardSortFn } from '../../util';
 import { Card } from '../../types';
 
 const horStyle = { display: 'flex', justifyContent: 'space-between' };
@@ -23,6 +23,7 @@ export function HomeRoute() {
         { id: 'a', position: 0 },
         { id: 'b', position: 1 },
         { id: 'c', position: 2 },
+        { id: 'd', position: 3 },
       ],
     });
   };
@@ -42,6 +43,13 @@ export function HomeRoute() {
     });
   };
 
+  const pick = (userId: string) => {
+    dispatch({
+      type: 'PICK',
+      userId,
+    });
+  };
+
   const swap = (userId: string, cardFromHand: Card, cardFromOpen: Card) => {
     dispatch({
       type: 'SWITCH_CARD',
@@ -54,53 +62,83 @@ export function HomeRoute() {
   return (
     <div>
       <button onClick={deal}>deal</button>
-      <button onClick={start}>start</button>
+      {game.state === 'pre-game' && <button onClick={start}>start</button>}
 
-      <h1>debug</h1>
+      <h1>Game</h1>
+      <pre>state: {game.state}</pre>
+      <pre>dealerUserId: {JSON.stringify(game.dealerUserId)}</pre>
+      <pre>currentPlayerId: {JSON.stringify(game.currentPlayerUserId)}</pre>
       <pre>
-        card count:{' '}
-        {tableDeck.length +
-          users.reduce((acc, { cardsClosed, cardsOpen, cardsHand }) => {
-            acc += cardsClosed.length + cardsOpen.length + cardsHand.length;
-            return acc;
-          }, 0)}
-        <br />
-        state: {game.state}
-        <br />
-        dealerUserId: {JSON.stringify(game.dealerUserId)}
-        <br />
-        currentPlayerId: {JSON.stringify(game.currentPlayerUserId)}
+        startingCard:{' '}
+        {game.startingCard ? getCardId(game.startingCard) : 'null'}
       </pre>
+      <pre>error: {game.error ? game.error.message : 'null'}</pre>
 
       <div style={horStyle}>
         <div>
           <h5>pile</h5>
           {tablePile.map(card => (
-            <pre>{getCardId(card)}</pre>
+            <pre key={getCardId(card)}>{getCardId(card)}</pre>
           ))}
         </div>
         <div>
           <h5>deck</h5>
           {tableDeck.map(card => (
-            <pre>{getCardId(card)}</pre>
+            <pre key={getCardId(card)}>{getCardId(card)}</pre>
           ))}
         </div>
         <div>
           <h5>discarded</h5>
           {tableDiscarded.map(card => (
-            <pre>{getCardId(card)}</pre>
+            <pre key={getCardId(card)}>{getCardId(card)}</pre>
           ))}
         </div>
       </div>
 
       {users.map(user => {
+        if (
+          user.cardsClosed.length === 0 &&
+          user.cardsOpen.length === 0 &&
+          user.cardsHand.length === 0
+        ) {
+          // User is done
+          return null;
+        }
+
         return (
           <div key={user.id}>
-            <h1>{user.id}</h1>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <h1>{user.id}</h1>
+              {game.state === 'playing' &&
+                game.currentPlayerUserId === user.id && (
+                  <>
+                    <button onClick={() => pick(user.id)}>Pick</button>
+                    <button
+                      onClick={() => {
+                        const cardCheckboxes = document.getElementsByName(
+                          `${user.id}`
+                        ) as NodeListOf<HTMLInputElement>;
+                        const selectedCards: Card[] = [];
+                        cardCheckboxes.forEach(cardCheckbox => {
+                          if (cardCheckbox.checked) {
+                            selectedCards.push(
+                              getCardFromId(cardCheckbox.value)
+                            );
+                          }
+                        });
+
+                        play(user.id, selectedCards);
+                      }}
+                    >
+                      Play
+                    </button>
+                  </>
+                )}
+            </div>
             <div style={horStyle}>
               <div>
                 <h5>hand</h5>
-                {user.cardsHand.map(cardHand => {
+                {user.cardsHand.sort(getCardSortFn()).map(cardHand => {
                   const cardHandId = getCardId(cardHand);
                   return (
                     <pre
@@ -111,7 +149,7 @@ export function HomeRoute() {
 
                       {game.state === 'pre-game' && (
                         <>
-                          <select name={`${user.id}:${cardHandId}`}>
+                          <select id={`${user.id}:${cardHandId}`}>
                             {user.cardsOpen.map(cardOpen => {
                               const cardOpenId = getCardId(cardOpen);
                               return (
@@ -124,9 +162,9 @@ export function HomeRoute() {
                           <button
                             onClick={() => {
                               const cardOpen = getCardFromId(
-                                (document.getElementsByName(
+                                (document.getElementById(
                                   `${user.id}:${cardHandId}`
-                                )[0] as HTMLSelectElement).value
+                                ) as HTMLSelectElement).value
                               );
 
                               swap(user.id, cardHand, cardOpen);
@@ -139,9 +177,11 @@ export function HomeRoute() {
 
                       {game.state === 'playing' &&
                         game.currentPlayerUserId === user.id && (
-                          <button onClick={() => play(user.id, [cardHand])}>
-                            play
-                          </button>
+                          <input
+                            type="checkbox"
+                            name={`${user.id}`}
+                            value={`${cardHandId}`}
+                          />
                         )}
                     </pre>
                   );
@@ -149,14 +189,45 @@ export function HomeRoute() {
               </div>
               <div>
                 <h5>open</h5>
-                {user.cardsOpen.map(card => (
-                  <pre>{getCardId(card)}</pre>
-                ))}
+                {user.cardsOpen.sort(getCardSortFn()).map(card => {
+                  const cardId = getCardId(card);
+                  return (
+                    <pre
+                      key={cardId}
+                      style={{ display: 'flex', alignItems: 'center' }}
+                    >
+                      {cardId}
+
+                      {game.state === 'playing' &&
+                        game.currentPlayerUserId === user.id &&
+                        user.cardsHand.length === 0 && (
+                          <input
+                            type="checkbox"
+                            name={`${user.id}`}
+                            value={`${cardId}`}
+                          />
+                        )}
+                    </pre>
+                  );
+                })}
               </div>
               <div>
                 <h5>closed</h5>
                 {user.cardsClosed.map(card => (
-                  <pre>{getCardId(card)}</pre>
+                  <pre
+                    key={getCardId(card)}
+                    style={{ display: 'flex', alignItems: 'center' }}
+                  >
+                    {getCardId(card)}
+
+                    {game.state === 'playing' &&
+                      game.currentPlayerUserId === user.id &&
+                      user.cardsOpen.length === 0 && (
+                        <button onClick={() => play(user.id, [card])}>
+                          play
+                        </button>
+                      )}
+                  </pre>
                 ))}
               </div>
             </div>

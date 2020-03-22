@@ -26,10 +26,3 @@ export interface Card {
   rank: CardRank;
   suit: CardSuit;
 }
-
-export type CardSpecialAction =
-  | { action: 'CLEAR_THE_DECK' } // 10
-  | { action: 'RESET' } // 2
-  | { action: 'INVISIBLE' } // 3
-  | { action: 'BELOW_7' } // 7
-  | { action: '8_WAIT' }; // 8

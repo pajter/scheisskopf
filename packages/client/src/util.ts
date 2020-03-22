@@ -1,6 +1,6 @@
 import _shuffle from 'lodash-es/shuffle';
 
-import { Card, CardSuit, CardRank } from '../../types';
+import { Card, CardSuit, CardRank } from './types';
 
 export const ranks: CardRank[] = [
   '2',
@@ -51,5 +51,15 @@ export const getCardFromId = (cardId: string): Card => {
   return {
     suit,
     rank,
+  };
+};
+
+export const getRankIdx = (card: Card) => {
+  return ranks.findIndex(rank => rank === card.rank);
+};
+
+export const getCardSortFn = () => {
+  return (a: Card, b: Card) => {
+    return getRankIdx(a) - getRankIdx(b);
   };
 };

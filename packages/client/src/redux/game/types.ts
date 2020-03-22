@@ -1,4 +1,5 @@
 import { Card } from '../../types';
+import { GameError } from './error';
 
 export interface State {
   tablePile: Card[];
@@ -9,6 +10,9 @@ export interface State {
   startCardHandCount: number | null;
   players: Player[];
   state: 'pre-deal' | 'pre-game' | 'playing' | 'paused' | 'ended';
+  error: GameError | null;
+  startingCard: Card | null;
+  moves: number;
 }
 
 export type Action =
