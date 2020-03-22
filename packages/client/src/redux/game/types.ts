@@ -12,7 +12,6 @@ export interface State {
   state: 'pre-deal' | 'pre-game' | 'playing' | 'paused' | 'ended';
   error: GameError | null;
   startingCard: Card | null;
-  moves: number;
 }
 
 export type Action =
@@ -30,7 +29,7 @@ export type Action =
   | { type: 'START'; userId: string }
   | { type: 'DRAW'; userId: string }
   | { type: 'PLAY'; userId: string; cards: Card[] }
-  | { type: 'PICK'; userId: string };
+  | { type: 'PICK'; userId: string; ownCards?: Card[] };
 
 export type Player = {
   id: string;
@@ -38,4 +37,6 @@ export type Player = {
   cardsOpen: Card[];
   cardsClosed: Card[];
   cardsHand: Card[];
+  isFinished: boolean;
+  turns: number;
 };

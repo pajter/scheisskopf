@@ -7,6 +7,7 @@ getStore({
       { id: 'b', name: 'metaljoe', ip: '2', priority: 1 },
       { id: 'c', name: 'zweedogg', ip: '3', priority: 2 },
       { id: 'd', name: 'joelke', ip: '4', priority: 3 },
+      { id: 'e', name: 'tomkeen', ip: '5', priority: 4 },
     ],
   },
 });

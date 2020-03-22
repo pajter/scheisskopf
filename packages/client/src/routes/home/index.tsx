@@ -5,6 +5,19 @@ import { Card } from '../../types';
 
 const horStyle = { display: 'flex', justifyContent: 'space-between' };
 
+const getSelectedCards = (userId: string): Card[] => {
+  const cardCheckboxes = document.getElementsByName(`${userId}`) as NodeListOf<
+    HTMLInputElement
+  >;
+  const selectedCards: Card[] = [];
+  cardCheckboxes.forEach(cardCheckbox => {
+    if (cardCheckbox.checked) {
+      selectedCards.push(getCardFromId(cardCheckbox.value));
+    }
+  });
+  return selectedCards;
+};
+
 export function HomeRoute() {
   const game = useSelector(state => state.game);
   const users = useSelector(state => state.game.players);
@@ -24,6 +37,7 @@ export function HomeRoute() {
         { id: 'b', position: 1 },
         { id: 'c', position: 2 },
         { id: 'd', position: 3 },
+        { id: 'e', position: 4 },
       ],
     });
   };
@@ -47,6 +61,7 @@ export function HomeRoute() {
     dispatch({
       type: 'PICK',
       userId,
+      ownCards: getSelectedCards(userId),
     });
   };
 
@@ -115,19 +130,7 @@ export function HomeRoute() {
                     <button onClick={() => pick(user.id)}>Pick</button>
                     <button
                       onClick={() => {
-                        const cardCheckboxes = document.getElementsByName(
-                          `${user.id}`
-                        ) as NodeListOf<HTMLInputElement>;
-                        const selectedCards: Card[] = [];
-                        cardCheckboxes.forEach(cardCheckbox => {
-                          if (cardCheckbox.checked) {
-                            selectedCards.push(
-                              getCardFromId(cardCheckbox.value)
-                            );
-                          }
-                        });
-
-                        play(user.id, selectedCards);
+                        play(user.id, getSelectedCards(user.id));
                       }}
                     >
                       Play
@@ -213,22 +216,28 @@ export function HomeRoute() {
               </div>
               <div>
                 <h5>closed</h5>
-                {user.cardsClosed.map(card => (
-                  <pre
-                    key={getCardId(card)}
-                    style={{ display: 'flex', alignItems: 'center' }}
-                  >
-                    {getCardId(card)}
+                {user.cardsClosed.map(card => {
+                  const cardId = getCardId(card);
+                  return (
+                    <pre
+                      key={cardId}
+                      style={{ display: 'flex', alignItems: 'center' }}
+                    >
+                      {cardId}
 
-                    {game.state === 'playing' &&
-                      game.currentPlayerUserId === user.id &&
-                      user.cardsOpen.length === 0 && (
-                        <button onClick={() => play(user.id, [card])}>
-                          play
-                        </button>
-                      )}
-                  </pre>
-                ))}
+                      {game.state === 'playing' &&
+                        game.currentPlayerUserId === user.id &&
+                        user.cardsHand.length === 0 &&
+                        user.cardsOpen.length === 0 && (
+                          <input
+                            type="checkbox"
+                            name={`${user.id}`}
+                            value={`${cardId}`}
+                          />
+                        )}
+                    </pre>
+                  );
+                })}
               </div>
             </div>
           </div>
