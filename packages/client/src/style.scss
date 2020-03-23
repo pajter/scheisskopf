@@ -55,9 +55,11 @@ button {
   &:focus {
     outline: none;
   }
-  &:enabled:hover {
-    background-color: black;
-    color: white;
+  @media (hover: hover) {
+    &:enabled:hover {
+      background-color: black;
+      color: white;
+    }
   }
 }
 
@@ -88,13 +90,15 @@ button {
     }
   }
 
-  &:enabled:hover {
-    background-color: transparent;
+  @media (hover: hover) {
+    &:enabled:hover {
+      background-color: transparent;
 
-    > .card-icon {
-      background-color: #eee;
+      > .card-icon {
+        background-color: #eee;
+      }
+      color: black;
     }
-    color: black;
   }
 
   &:focus {
