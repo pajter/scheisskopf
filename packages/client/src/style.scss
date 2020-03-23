@@ -55,12 +55,6 @@ button {
   &:focus {
     outline: none;
   }
-  @media (hover: hover) {
-    &:enabled:hover {
-      background-color: black;
-      color: white;
-    }
-  }
 }
 
 .card-button {
@@ -87,17 +81,6 @@ button {
   &.-toggled {
     > .card-icon {
       background-color: #eee;
-    }
-  }
-
-  @media (hover: hover) {
-    &:enabled:hover {
-      background-color: transparent;
-
-      > .card-icon {
-        background-color: #eee;
-      }
-      color: black;
     }
   }
 
