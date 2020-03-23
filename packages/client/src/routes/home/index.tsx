@@ -1,32 +1,119 @@
 import React from 'react';
+import reverse from 'lodash-es/reverse';
 import { useSelector, useDispatch } from '../../redux/hooks';
 import { getCardId, getCardFromId, getCardSortFn } from '../../util';
 import { Card } from '../../types';
+import { GAME_ERROR_ILLEGAL_MOVE_BLIND } from '../../redux/game/error';
 
-const horStyle = { display: 'flex', justifyContent: 'space-between' };
+const getSelectedCards = (
+  userId: string,
+  type?: 'hand' | 'open' | 'closed'
+): Card[] => {
+  const cardButtons = Array.from(
+    document.getElementsByClassName('card-button') as HTMLCollectionOf<
+      HTMLButtonElement
+    >
+  );
 
-const getSelectedCards = (userId: string): Card[] => {
-  const cardCheckboxes = document.getElementsByName(`${userId}`) as NodeListOf<
-    HTMLInputElement
-  >;
   const selectedCards: Card[] = [];
-  cardCheckboxes.forEach(cardCheckbox => {
-    if (cardCheckbox.checked) {
-      selectedCards.push(getCardFromId(cardCheckbox.value));
+  cardButtons.forEach(cardButton => {
+    if (
+      cardButton.classList.contains('-toggled') &&
+      cardButton.getAttribute('data-user-id') === userId &&
+      (typeof type === 'undefined'
+        ? true
+        : cardButton.getAttribute('data-card-type') === type)
+    ) {
+      selectedCards.push(getCardFromId(cardButton.getAttribute('data-value')!));
     }
   });
+
   return selectedCards;
 };
 
+const EMOJI = {
+  club: '♣️',
+  diamond: '♦️',
+  heart: '♥️',
+  spade: '♠️',
+};
+
+function CardIcon({ card, hidden }: { card: Card; hidden?: boolean }) {
+  const _hidden = hidden && !(window as any).debug;
+
+  return (
+    <div className={`card-icon ${_hidden ? '-hidden' : ''}`}>
+      {!_hidden && (
+        <>
+          <div>{EMOJI[card.suit]}</div>
+          <div>{card.rank}</div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function CardButton({
+  card,
+  isDisabled,
+  userId,
+  type,
+  hidden,
+}: {
+  card: Card;
+  isDisabled?: boolean;
+  userId: string;
+  type?: 'hand' | 'open' | 'closed';
+  hidden?: boolean;
+}) {
+  return (
+    <button
+      className={`card-button`}
+      id={`card:${card.suit}:${card.rank}`}
+      onClick={e => {
+        if (type === 'closed') {
+          Array.from(document.getElementsByClassName('card-button'))
+            .filter(
+              btn =>
+                btn.getAttribute('data-user-id') === userId &&
+                btn !== e.currentTarget
+            )
+            .forEach(btn => {
+              btn.classList.remove('-toggled');
+            });
+        }
+
+        (e.currentTarget as HTMLButtonElement).classList.toggle('-toggled');
+      }}
+      disabled={isDisabled}
+      data-value={getCardId(card)}
+      data-user-id={userId}
+      data-card-type={type}
+    >
+      <CardIcon card={card} hidden={hidden} />
+    </button>
+  );
+}
+
 export function HomeRoute() {
   const game = useSelector(state => state.game);
-  const users = useSelector(state => state.game.players);
+  const players = useSelector(state =>
+    state.game.players.filter(player => !player.isFinished)
+  );
 
-  const tablePile = useSelector(state => state.game.tablePile);
-  const tableDeck = useSelector(state => state.game.tableDeck);
-  const tableDiscarded = useSelector(state => state.game.tableDiscarded);
+  const tablePile = useSelector(state => reverse(state.game.tablePile));
+  const tableDeck = useSelector(state => reverse(state.game.tableDeck));
+  const tableDiscarded = useSelector(state =>
+    reverse(state.game.tableDiscarded)
+  );
 
   const dispatch = useDispatch();
+
+  React.useEffect(() => {
+    Array.from(document.getElementsByClassName('card-button')).forEach(btn =>
+      btn.classList.remove('-toggled')
+    );
+  }, [game.currentPlayerUserId]);
 
   const deal = () => {
     dispatch({
@@ -65,70 +152,76 @@ export function HomeRoute() {
     });
   };
 
-  const swap = (userId: string, cardFromHand: Card, cardFromOpen: Card) => {
+  const swap = (userId: string) => {
     dispatch({
-      type: 'SWITCH_CARD',
+      type: 'SWAP_CARDS',
       userId,
-      cardFromHand,
-      cardFromOpen,
+      cardsHand: getSelectedCards(userId, 'hand'),
+      cardsOpen: getSelectedCards(userId, 'open'),
     });
   };
 
   return (
     <div>
-      <button onClick={deal}>deal</button>
-      {game.state === 'pre-game' && <button onClick={start}>start</button>}
-
-      <h1>Game</h1>
-      <pre>state: {game.state}</pre>
-      <pre>dealerUserId: {JSON.stringify(game.dealerUserId)}</pre>
-      <pre>currentPlayerId: {JSON.stringify(game.currentPlayerUserId)}</pre>
-      <pre>
-        startingCard:{' '}
-        {game.startingCard ? getCardId(game.startingCard) : 'null'}
-      </pre>
-      <pre>error: {game.error ? game.error.message : 'null'}</pre>
-
-      <div style={horStyle}>
-        <div>
-          <h5>pile</h5>
-          {tablePile.map(card => (
-            <pre key={getCardId(card)}>{getCardId(card)}</pre>
-          ))}
+      <div className="stick">
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <button onClick={deal}>deal</button>
+          {game.state === 'pre-game' && <button onClick={start}>start</button>}
         </div>
-        <div>
-          <h5>deck</h5>
+
+        <h5>deck</h5>
+        <div className="card-stack -overlap-large">
           {tableDeck.map(card => (
-            <pre key={getCardId(card)}>{getCardId(card)}</pre>
+            <CardIcon key={getCardId(card)} card={card} hidden={true} />
           ))}
         </div>
-        <div>
-          <h5>discarded</h5>
+
+        <h5>discarded</h5>
+        <div className="card-stack -overlap-large">
           {tableDiscarded.map(card => (
-            <pre key={getCardId(card)}>{getCardId(card)}</pre>
+            <CardIcon key={getCardId(card)} card={card} hidden={true} />
           ))}
         </div>
+
+        <h5>pile</h5>
+        <div className="card-stack -overlap">
+          {tablePile.map(card => (
+            <CardIcon key={getCardId(card)} card={card} />
+          ))}
+        </div>
+
+        {game.error && (
+          <>
+            <br />
+            <br />
+            <div key={Math.random()} className="error">
+              {game.error.message}
+            </div>
+          </>
+        )}
       </div>
 
-      {users.map(user => {
-        if (
-          user.cardsClosed.length === 0 &&
-          user.cardsOpen.length === 0 &&
-          user.cardsHand.length === 0
-        ) {
-          // User is done
-          return null;
-        }
-
+      {players.map(user => {
+        const cardsHand = reverse(user.cardsHand.sort(getCardSortFn()));
+        const cardsOpen = reverse(user.cardsOpen.sort(getCardSortFn()));
+        const cardsClosed = user.cardsClosed;
         return (
-          <div key={user.id}>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <h1>{user.id}</h1>
+          <div className="playfield" key={user.id}>
+            <div className="user-header">
+              <h2>{user.id}</h2>
+              {game.state === 'pre-game' && (
+                <>
+                  <button onClick={() => swap(user.id)}>swap</button>
+                </>
+              )}
               {game.state === 'playing' &&
                 game.currentPlayerUserId === user.id && (
                   <>
                     <button onClick={() => pick(user.id)}>Pick</button>
                     <button
+                      disabled={
+                        game.error?.code === GAME_ERROR_ILLEGAL_MOVE_BLIND
+                      }
                       onClick={() => {
                         play(user.id, getSelectedCards(user.id));
                       }}
@@ -138,108 +231,91 @@ export function HomeRoute() {
                   </>
                 )}
             </div>
-            <div style={horStyle}>
-              <div>
-                <h5>hand</h5>
-                {user.cardsHand.sort(getCardSortFn()).map(cardHand => {
-                  const cardHandId = getCardId(cardHand);
-                  return (
-                    <pre
-                      style={{ display: 'flex', alignItems: 'center' }}
-                      key={cardHandId}
-                    >
-                      {cardHandId}
 
-                      {game.state === 'pre-game' && (
-                        <>
-                          <select id={`${user.id}:${cardHandId}`}>
-                            {user.cardsOpen.map(cardOpen => {
-                              const cardOpenId = getCardId(cardOpen);
-                              return (
-                                <option key={cardOpenId} value={cardOpenId}>
-                                  {cardOpenId}
-                                </option>
-                              );
-                            })}
-                          </select>
-                          <button
-                            onClick={() => {
-                              const cardOpen = getCardFromId(
-                                (document.getElementById(
-                                  `${user.id}:${cardHandId}`
-                                ) as HTMLSelectElement).value
-                              );
+            {game.state === 'ended' && <h1>💩🗣 SCHEISKOPFFFF!!!</h1>}
 
-                              swap(user.id, cardHand, cardOpen);
-                            }}
-                          >
-                            swap
-                          </button>
-                        </>
-                      )}
+            {game.state !== 'ended' && (
+              <div className="user-stacks">
+                {cardsHand.length > 0 && (
+                  <div className="card-stack -overlap">
+                    {cardsHand.map(cardHand => {
+                      const cardId = getCardId(cardHand);
+                      return (
+                        <CardButton
+                          key={cardId}
+                          card={cardHand}
+                          userId={user.id}
+                          type="hand"
+                          isDisabled={
+                            game.state === 'pre-game'
+                              ? false
+                              : !(
+                                  game.state === 'playing' &&
+                                  game.currentPlayerUserId === user.id
+                                )
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                )}
 
-                      {game.state === 'playing' &&
-                        game.currentPlayerUserId === user.id && (
-                          <input
-                            type="checkbox"
-                            name={`${user.id}`}
-                            value={`${cardHandId}`}
-                          />
-                        )}
-                    </pre>
-                  );
-                })}
+                {cardsOpen.length > 0 && (
+                  <div className="card-stack -spaced">
+                    {cardsOpen.map(card => {
+                      const cardId = getCardId(card);
+                      return (
+                        <CardButton
+                          key={cardId}
+                          card={card}
+                          userId={user.id}
+                          type="open"
+                          isDisabled={
+                            game.state === 'pre-game'
+                              ? false
+                              : !(
+                                  game.state === 'playing' &&
+                                  game.currentPlayerUserId === user.id &&
+                                  user.cardsHand.length === 0
+                                )
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+
+                {cardsClosed.length > 0 && (
+                  <div className="card-stack -spaced">
+                    {cardsClosed.map(card => {
+                      const cardId = getCardId(card);
+
+                      return (
+                        <CardButton
+                          key={cardId}
+                          card={card}
+                          userId={user.id}
+                          type="closed"
+                          hidden={true}
+                          isDisabled={
+                            !(
+                              game.state === 'playing' &&
+                              game.currentPlayerUserId === user.id &&
+                              user.cardsHand.length === 0 &&
+                              user.cardsOpen.length === 0
+                            ) ||
+                            (game.state === 'playing' &&
+                              game.currentPlayerUserId === user.id &&
+                              game.error?.code ===
+                                GAME_ERROR_ILLEGAL_MOVE_BLIND)
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-              <div>
-                <h5>open</h5>
-                {user.cardsOpen.sort(getCardSortFn()).map(card => {
-                  const cardId = getCardId(card);
-                  return (
-                    <pre
-                      key={cardId}
-                      style={{ display: 'flex', alignItems: 'center' }}
-                    >
-                      {cardId}
-
-                      {game.state === 'playing' &&
-                        game.currentPlayerUserId === user.id &&
-                        user.cardsHand.length === 0 && (
-                          <input
-                            type="checkbox"
-                            name={`${user.id}`}
-                            value={`${cardId}`}
-                          />
-                        )}
-                    </pre>
-                  );
-                })}
-              </div>
-              <div>
-                <h5>closed</h5>
-                {user.cardsClosed.map(card => {
-                  const cardId = getCardId(card);
-                  return (
-                    <pre
-                      key={cardId}
-                      style={{ display: 'flex', alignItems: 'center' }}
-                    >
-                      {cardId}
-
-                      {game.state === 'playing' &&
-                        game.currentPlayerUserId === user.id &&
-                        user.cardsHand.length === 0 &&
-                        user.cardsOpen.length === 0 && (
-                          <input
-                            type="checkbox"
-                            name={`${user.id}`}
-                            value={`${cardId}`}
-                          />
-                        )}
-                    </pre>
-                  );
-                })}
-              </div>
-            </div>
+            )}
           </div>
         );
       })}

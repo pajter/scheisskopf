@@ -8,10 +8,10 @@ export interface User {
 export type CardSuit = 'diamond' | 'heart' | 'spade' | 'club';
 
 export type CardRank =
-  | 'ace'
-  | 'king'
-  | 'queen'
-  | 'jack'
+  | 'A'
+  | 'K'
+  | 'Q'
+  | 'J'
   | '10'
   | '9'
   | '8'

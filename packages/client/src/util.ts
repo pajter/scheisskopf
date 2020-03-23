@@ -12,10 +12,10 @@ export const ranks: CardRank[] = [
   '8',
   '9',
   '10',
-  'jack',
-  'queen',
-  'king',
-  'ace',
+  'J',
+  'Q',
+  'K',
+  'A',
 ];
 
 export const suits: CardSuit[] = ['club', 'spade', 'diamond', 'heart'];

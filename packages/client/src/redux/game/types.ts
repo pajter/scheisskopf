@@ -21,10 +21,10 @@ export type Action =
       gameUsers: { id: string; position: number }[];
     }
   | {
-      type: 'SWITCH_CARD';
+      type: 'SWAP_CARDS';
       userId: string;
-      cardFromHand: Card;
-      cardFromOpen: Card;
+      cardsHand: Card[];
+      cardsOpen: Card[];
     }
   | { type: 'START'; userId: string }
   | { type: 'DRAW'; userId: string }
