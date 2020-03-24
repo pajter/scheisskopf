@@ -26,6 +26,8 @@
   },
   "scripts": {
     "build": "parcel build src/index.html",
-    "dev": "parcel src/index.html"
+    "dev": "parcel src/index.html",
+    "lint": "yarn lint:ts",
+    "lint:ts": "tsc --noEmit"
   }
 }

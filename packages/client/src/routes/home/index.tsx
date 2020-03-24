@@ -1,21 +1,21 @@
 import React from 'react';
 import reverse from 'lodash-es/reverse';
 import { useSelector, useDispatch } from '../../redux/hooks';
-import { getCardId, getCardFromId, getCardSortFn } from '../../util';
-import { Card } from '../../types';
+import { getCardObj, getCardSortFn, getRankName } from '../../util';
+import { CardId } from '../../types';
 import { GAME_ERROR_ILLEGAL_MOVE_BLIND } from '../../redux/game/error';
 
 const getSelectedCards = (
   userId: string,
   type?: 'hand' | 'open' | 'closed'
-): Card[] => {
+): CardId[] => {
   const cardButtons = Array.from(
     document.getElementsByClassName('card-button') as HTMLCollectionOf<
       HTMLButtonElement
     >
   );
 
-  const selectedCards: Card[] = [];
+  const selectedCards: CardId[] = [];
   cardButtons.forEach(cardButton => {
     if (
       cardButton.classList.contains('-toggled') &&
@@ -24,7 +24,7 @@ const getSelectedCards = (
         ? true
         : cardButton.getAttribute('data-card-type') === type)
     ) {
-      selectedCards.push(getCardFromId(cardButton.getAttribute('data-value')!));
+      selectedCards.push(cardButton.getAttribute('data-card')! as CardId);
     }
   });
 
@@ -38,15 +38,17 @@ const EMOJI = {
   spade: '♠️',
 };
 
-function CardIcon({ card, hidden }: { card: Card; hidden?: boolean }) {
+function CardIcon({ card, hidden }: { card: CardId; hidden?: boolean }) {
   const _hidden = hidden && !(window as any).debug;
+
+  const cardObj = getCardObj(card);
 
   return (
     <div className={`card-icon ${_hidden ? '-hidden' : ''}`}>
       {!_hidden && (
         <>
-          <div>{EMOJI[card.suit]}</div>
-          <div>{card.rank}</div>
+          <div>{EMOJI[cardObj.suit]}</div>
+          <div>{getRankName(cardObj.rank)}</div>
         </>
       )}
     </div>
@@ -60,7 +62,7 @@ function CardButton({
   type,
   hidden,
 }: {
-  card: Card;
+  card: CardId;
   isDisabled?: boolean;
   userId: string;
   type?: 'hand' | 'open' | 'closed';
@@ -69,7 +71,7 @@ function CardButton({
   return (
     <button
       className={`card-button`}
-      id={`card:${card.suit}:${card.rank}`}
+      id={`card:${card}`}
       onClick={e => {
         if (type === 'closed') {
           Array.from(document.getElementsByClassName('card-button'))
@@ -86,7 +88,7 @@ function CardButton({
         (e.currentTarget as HTMLButtonElement).classList.toggle('-toggled');
       }}
       disabled={isDisabled}
-      data-value={getCardId(card)}
+      data-card={card}
       data-user-id={userId}
       data-card-type={type}
     >
@@ -136,7 +138,7 @@ export function HomeRoute() {
     });
   };
 
-  const play = (userId: string, cards: Card[]) => {
+  const play = (userId: string, cards: CardId[]) => {
     dispatch({
       type: 'PLAY',
       userId,
@@ -172,21 +174,21 @@ export function HomeRoute() {
         <h5>deck</h5>
         <div className="card-stack -overlap-large">
           {tableDeck.map(card => (
-            <CardIcon key={getCardId(card)} card={card} hidden={true} />
+            <CardIcon key={card} card={card} hidden={true} />
           ))}
         </div>
 
         <h5>discarded</h5>
         <div className="card-stack -overlap-large">
           {tableDiscarded.map(card => (
-            <CardIcon key={getCardId(card)} card={card} hidden={true} />
+            <CardIcon key={card} card={card} hidden={true} />
           ))}
         </div>
 
         <h5>pile</h5>
         <div className="card-stack -overlap">
           {tablePile.map(card => (
-            <CardIcon key={getCardId(card)} card={card} />
+            <CardIcon key={card} card={card} />
           ))}
         </div>
 
@@ -239,10 +241,9 @@ export function HomeRoute() {
                 {cardsHand.length > 0 && (
                   <div className="card-stack -overlap">
                     {cardsHand.map(cardHand => {
-                      const cardId = getCardId(cardHand);
                       return (
                         <CardButton
-                          key={cardId}
+                          key={cardHand}
                           card={cardHand}
                           userId={user.id}
                           type="hand"
@@ -263,10 +264,9 @@ export function HomeRoute() {
                 {cardsOpen.length > 0 && (
                   <div className="card-stack -spaced">
                     {cardsOpen.map(card => {
-                      const cardId = getCardId(card);
                       return (
                         <CardButton
-                          key={cardId}
+                          key={card}
                           card={card}
                           userId={user.id}
                           type="open"
@@ -288,11 +288,9 @@ export function HomeRoute() {
                 {cardsClosed.length > 0 && (
                   <div className="card-stack -spaced">
                     {cardsClosed.map(card => {
-                      const cardId = getCardId(card);
-
                       return (
                         <CardButton
-                          key={cardId}
+                          key={card}
                           card={card}
                           userId={user.id}
                           type="closed"

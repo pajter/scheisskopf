@@ -1,31 +1,31 @@
 import _shuffle from 'lodash-es/shuffle';
 
-import { Card, CardSuit, CardRank } from './types';
+import { CardId, CardSuit, CardRank } from './types';
 
 export const ranks: CardRank[] = [
-  '2',
-  '3',
-  '4',
-  '5',
-  '6',
-  '7',
-  '8',
-  '9',
-  '10',
-  'J',
-  'Q',
-  'K',
-  'A',
+  2,
+  3,
+  4,
+  5,
+  6,
+  7,
+  8,
+  9,
+  10,
+  11, // Jack
+  12, // Queen
+  13, // King
+  14, // Ace
 ];
 
 export const suits: CardSuit[] = ['club', 'spade', 'diamond', 'heart'];
 
-export const getDeck = (shuffle: boolean = true): Card[] => {
-  const deck: Card[] = [];
+export const getDeck = (shuffle: boolean = true): CardId[] => {
+  const deck: CardId[] = [];
 
   suits.forEach(suit => {
     ranks.forEach(rank => {
-      deck.push({ suit, rank });
+      deck.push(getCardId({ suit, rank }));
     });
   });
 
@@ -36,31 +36,43 @@ export const getDeck = (shuffle: boolean = true): Card[] => {
   }
 };
 
-export const cardsEqual = (cardA: Card, cardB: Card): boolean =>
-  cardA.rank === cardB.rank && cardA.suit === cardB.suit;
+export const getCardId = ({
+  suit,
+  rank,
+}: {
+  suit: CardSuit;
+  rank: CardRank;
+}): CardId => `${suit}:${rank}`;
 
-export const cardsEqualFn = (cardA: Card) => (cardB: Card): boolean =>
-  cardsEqual(cardA, cardB);
-
-export const getCardId = (card: Card): string =>
-  [card.suit, card.rank].join(':');
-
-export const getCardFromId = (cardId: string): Card => {
-  const [suit, rank] = cardId.split(':') as [CardSuit, CardRank];
+export const getCardObj = (
+  cardId: string
+): { suit: CardSuit; rank: CardRank } => {
+  const [suit, rank] = cardId.split(':');
 
   return {
-    suit,
-    rank,
+    suit: suit as CardSuit,
+    rank: +rank as CardRank,
   };
 };
 
-export const getRankIdx = (card: Card) => {
-  return ranks.findIndex(rank => rank === card.rank);
+export const getRankName = (rank: CardRank): string => {
+  switch (rank) {
+    case 11:
+      return 'J';
+    case 12:
+      return 'Q';
+    case 13:
+      return 'K';
+    case 14:
+      return 'A';
+    default:
+      return `${rank}`;
+  }
 };
 
 export const getCardSortFn = () => {
-  return (a: Card, b: Card) => {
-    return getRankIdx(a) - getRankIdx(b);
+  return (a: CardId, b: CardId) => {
+    return getCardObj(a).rank - getCardObj(b).rank;
   };
 };
 

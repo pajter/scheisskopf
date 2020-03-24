@@ -1,17 +1,16 @@
 import difference from 'lodash-es/difference';
+import reverse from 'lodash-es/reverse';
 
 import { State, Action, Player } from './types';
 import {
   getDeck,
-  cardsEqualFn,
   ranks,
   suits,
-  getRankIdx,
-  getCardId,
-  getCardFromId,
+  getCardObj,
   getIterator,
+  getCardId,
 } from '../../util';
-import { Card } from '../../types';
+import { CardId } from '../../types';
 import {
   GameError,
   GAME_ERROR_NO_CARDS_PLAYED,
@@ -84,36 +83,20 @@ export const reducer = (state: State = initialState, action: Action): State => {
       // Clone user
       const player = { ...state.players[currentPlayerIdx] };
 
-      if (
-        difference(
-          action.cardsHand.map(getCardId),
-          player.cardsHand.map(getCardId)
-        ).length
-      ) {
+      if (difference(action.cardsHand, player.cardsHand).length) {
         throw new Error('Card not in hand!');
       }
-      if (
-        difference(
-          action.cardsOpen.map(getCardId),
-          player.cardsOpen.map(getCardId)
-        ).length
-      ) {
+      if (difference(action.cardsOpen, player.cardsOpen).length) {
         throw new Error('Card not in open pile!');
       }
 
       // Swap cards
       player.cardsHand = [
-        ...difference(
-          player.cardsHand.map(getCardId),
-          action.cardsHand.map(getCardId)
-        ).map(getCardFromId),
+        ...difference(player.cardsHand, action.cardsHand),
         ...action.cardsOpen,
       ];
       player.cardsOpen = [
-        ...difference(
-          player.cardsOpen.map(getCardId),
-          action.cardsOpen.map(getCardId)
-        ).map(getCardFromId),
+        ...difference(player.cardsOpen, action.cardsOpen),
         ...action.cardsHand,
       ];
 
@@ -173,7 +156,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
       // If start of game, the startingCard has to be played
       if (
         getTotalTurns(state.players) === 0 &&
-        !action.cards.find(cardsEqualFn(state.startingCard!))
+        !action.cards.includes(state.startingCard!)
       ) {
         return {
           ...state,
@@ -190,7 +173,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
         player.cardsHand.length === 0 &&
         player.cardsOpen.length === 0 &&
         action.cards.length === 1 &&
-        player.cardsClosed.find(cardsEqualFn(firstCard))
+        player.cardsClosed.includes(firstCard)
       ) {
         if (state.error?.code === GAME_ERROR_ILLEGAL_MOVE_BLIND) {
           // We can't make any more moves until the pile has been picked up
@@ -204,7 +187,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
           let tablePile = [...state.tablePile, ...action.cards];
 
           // Remove blind card from closed cards
-          player.cardsClosed = removeCard(firstCard, player.cardsClosed);
+          player.cardsClosed = player.cardsClosed.filter(c => c !== firstCard);
           player.turns = player.turns + 1;
 
           const players = [...state.players];
@@ -215,7 +198,9 @@ export const reducer = (state: State = initialState, action: Action): State => {
             tablePile,
             players,
             error: new GameError(
-              `Illegal move! Can not play a ${firstCard.rank} on a ${illegalMove.rank}.`,
+              `Illegal move! Can not play a ${
+                getCardObj(firstCard).rank
+              } on a ${getCardObj(illegalMove).rank}.`,
               GAME_ERROR_ILLEGAL_MOVE_BLIND
             ),
           };
@@ -228,16 +213,18 @@ export const reducer = (state: State = initialState, action: Action): State => {
         const illegalMove = getIllegalMove(card, state.tablePile);
         if (illegalMove) {
           error = new GameError(
-            `Illegal move! Can not play a ${card.rank} on a ${illegalMove.rank}.`,
+            `Illegal move! Can not play a ${getCardObj(card).rank} on a ${
+              getCardObj(illegalMove).rank
+            }.`,
             GAME_ERROR_ILLEGAL_MOVE
           );
           break;
         }
 
         // Cards can be remove from all piles
-        player.cardsHand = removeCard(card, player.cardsHand);
-        player.cardsOpen = removeCard(card, player.cardsOpen);
-        player.cardsClosed = removeCard(card, player.cardsClosed);
+        player.cardsHand = player.cardsHand.filter(c => c !== card);
+        player.cardsOpen = player.cardsOpen.filter(c => c !== card);
+        player.cardsClosed = player.cardsClosed.filter(c => c !== card);
       }
 
       if (error) {
@@ -263,6 +250,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
       // Increase player turns
       player.turns = player.turns + 1;
 
+      // Player is finished if there are no more cards left
       if (
         player.cardsClosed.length === 0 &&
         player.cardsOpen.length === 0 &&
@@ -275,10 +263,10 @@ export const reducer = (state: State = initialState, action: Action): State => {
       players[playerIdx] = player;
 
       // Check how many players are skipped by counting number of 8 cards played
-      const skipPlayers = action.cards.filter(({ rank }) => rank === '8')
+      const skipPlayers = action.cards.filter(c => getCardObj(c).rank === 8)
         .length;
 
-      // Warn: pass new players data because of recent updates that haven't yet persisted to state yet
+      // Warn: pass new players data because (instead of players still in `state`)
       const nextPlayer = getNextPlayer(player, players, skipPlayers);
 
       let nextPlayerUserId = nextPlayer.id;
@@ -288,7 +276,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
         tableDiscarded = [...tableDiscarded, ...tablePile];
         tablePile = [];
 
-        // Keep same player if not yet finished
+        // Warn: only keep same player if not yet finished
         if (!player.isFinished) {
           nextPlayerUserId = player.id;
         }
@@ -297,6 +285,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
       // If only one player left
       let newGameState = state.state;
       if (players.filter(player => !player.isFinished).length === 1) {
+        // A shithead has been crowned!
         newGameState = 'ended';
       }
 
@@ -338,18 +327,12 @@ export const reducer = (state: State = initialState, action: Action): State => {
       player.cardsHand = [...player.cardsHand, ...state.tablePile];
 
       if (Array.isArray(action.ownCards)) {
-        // Filter cards already in hand
-        action.ownCards = action.ownCards.filter(
-          card => !player.cardsHand.find(cardsEqualFn(card))
-        );
+        // Filter cards already in hand (this could happen by accident, we just want to make sure)
+        action.ownCards = difference(action.ownCards, player.cardsHand);
 
         // Remove own cards from whatever pile
-        player.cardsOpen = player.cardsOpen.filter(
-          card => !action.ownCards!.find(cardsEqualFn(card))
-        );
-        player.cardsClosed = player.cardsClosed.filter(
-          card => !action.ownCards!.find(cardsEqualFn(card))
-        );
+        player.cardsOpen = difference(player.cardsOpen, action.ownCards);
+        player.cardsClosed = difference(player.cardsClosed, action.ownCards);
 
         // Add to cards in hand
         player.cardsHand = [...player.cardsHand, ...action.ownCards];
@@ -418,76 +401,72 @@ const getNextPlayer = (
   return nextPlayer;
 };
 
-const removeCard = (card: Card, cards: Card[]): Card[] => {
-  const fn = cardsEqualFn(card);
-  return cards.filter(c => !fn(c));
-};
-
 const getIllegalMove = (
-  playingCard: Card,
-  cards?: Card[]
-): Card | undefined => {
+  playingCard: CardId,
+  cards?: CardId[]
+): CardId | undefined => {
   // Can always play an empty pile
   if (typeof cards === 'undefined' || !cards.length) {
     return;
   }
 
   // Special cards
+  const playingCardObj = getCardObj(playingCard);
   if (
-    playingCard.rank === '2' ||
-    playingCard.rank === '3' ||
-    playingCard.rank === '10'
+    playingCardObj.rank === 2 ||
+    playingCardObj.rank === 3 ||
+    playingCardObj.rank === 10
   ) {
     return;
   }
 
   // If we have a '3', move up the pile until there's no longer a 3
   const cardsCopy = [...cards];
-  let currentCard = cardsCopy.pop()!;
-  while (currentCard.rank === '3' && cardsCopy.length) {
-    currentCard = cardsCopy.pop()!;
+  let currentCardObj = getCardObj(cardsCopy.pop()!);
+  while (currentCardObj.rank === 3 && cardsCopy.length) {
+    currentCardObj = getCardObj(cardsCopy.pop()!);
   }
   // If there's still a 3, that means the whole pile is made up out of 3's, so it's a free play
-  if (currentCard.rank === '3') {
+  if (currentCardObj.rank === 3) {
     return;
   }
 
-  if (currentCard.rank === '7') {
+  if (currentCardObj.rank === 7) {
     // Next card needs to be equal to or lower than 7
-    return getRankIdx(playingCard) <= getRankIdx(currentCard)
+    return playingCardObj.rank <= currentCardObj.rank
       ? undefined
-      : currentCard;
+      : getCardId(currentCardObj);
   }
 
   // Next card needs to be equal or higher than current
-  return getRankIdx(playingCard) >= getRankIdx(currentCard)
+  return playingCardObj.rank >= currentCardObj.rank
     ? undefined
-    : currentCard;
+    : getCardId(currentCardObj);
 };
 
-export const shouldClearTheDeck = (cards: Card[]) => {
-  if (cards[cards.length - 1].rank === '10') {
+export const shouldClearTheDeck = (cards: CardId[]) => {
+  if (getCardObj(cards[cards.length - 1]).rank === 10) {
     return true;
   }
 
-  let currentRankIdx: number | undefined;
+  let currentRank: number | undefined;
   let count: number = 0;
-  const reversedCards = [...cards];
-  reversedCards.reverse();
-  for (const card of reversedCards) {
-    if (typeof currentRankIdx === 'undefined') {
-      currentRankIdx = getRankIdx(card);
+  const reversedCardObjs = reverse([...cards]).map(getCardObj);
+
+  for (const cardObj of reversedCardObjs) {
+    if (typeof currentRank === 'undefined') {
+      currentRank = cardObj.rank;
 
       // We have one card of this rank
       count = 1;
     } else {
       // TODO: this doesn't work somehow
-      if (card.rank === '3') {
+      if (cardObj.rank === 3) {
         // Continue loop because 3 is invisible
         continue;
       }
 
-      if (getRankIdx(card) === currentRankIdx) {
+      if (cardObj.rank === currentRank) {
         // We have another card of this rank
         count++;
       } else {
@@ -506,12 +485,12 @@ export const getTotalTurns = (players: Player[]): number => {
   }, 0);
 };
 
-export const areCardsTheSameRank = (cards: Card[]): boolean => {
+export const areCardsTheSameRank = (cards: CardId[]): boolean => {
   // Check that all cards are the same rank
   if (cards.length > 1) {
-    const firstRank = cards[0].rank;
+    const firstRank = getCardObj(cards[0]).rank;
     for (const card of cards) {
-      if (card.rank !== firstRank) {
+      if (getCardObj(card).rank !== firstRank) {
         return false;
       }
     }
@@ -523,8 +502,8 @@ export const areCardsTheSameRank = (cards: Card[]): boolean => {
 export const findStartingPlayer = (players: Player[]) => {
   let iterateSuits = getIterator(suits);
   let iterateRanks = getIterator(
-    // Filter 2s and 3s
-    [...ranks].filter(r => !['2', '3'].includes(r))
+    // Start from 4 (filter 2s and 3s)
+    [...ranks].filter(r => r > 3)
   );
   iterateSuits.on('loop', () => {
     // Move on to next rank once we've looped suits
@@ -539,8 +518,8 @@ export const findStartingPlayer = (players: Player[]) => {
 
       // Search in hand only
       if (
-        player.cardsHand.find(
-          cardsEqualFn({ suit: iterateSuits.get(), rank: iterateRanks.get() })
+        player.cardsHand.includes(
+          getCardId({ suit: iterateSuits.get(), rank: iterateRanks.get() })
         )
       ) {
         startingPlayer = player;
@@ -558,11 +537,13 @@ export const findStartingPlayer = (players: Player[]) => {
     iterateSuits.next();
   }
 
-  const startingCard: Card = {
-    suit: iterateSuits.get(),
-    rank: iterateRanks.get(),
+  return {
+    startingPlayer,
+    startingCard: getCardId({
+      suit: iterateSuits.get(),
+      rank: iterateRanks.get(),
+    }),
   };
-  return { startingPlayer, startingCard };
 };
 
 const getPlayer = (id: string, position: number) => ({
