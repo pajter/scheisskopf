@@ -13,6 +13,7 @@ import {
 import { CardId } from '../../types';
 import {
   GameError,
+  GAME_ERROR_SWAP_UNFAIR,
   GAME_ERROR_NO_CARDS_PLAYED,
   GAME_ERROR_ILLEGAL_MOVE_CARD_RANKS_DONT_MATCH,
   GAME_ERROR_ILLEGAL_MOVE_FIRST_TURN_MUST_HAVE_STARTING_CARD,
@@ -76,6 +77,13 @@ export const reducer = (state: State = initialState, action: Action): State => {
       };
     }
     case 'SWAP_CARDS': {
+      if (action.cardsHand.length !== action.cardsOpen.length) {
+        return {
+          ...state,
+          error: new GameError('Swap must be fair!', GAME_ERROR_SWAP_UNFAIR),
+        };
+      }
+
       const currentPlayerIdx = state.players.findIndex(
         user => user.id === action.userId
       );
@@ -106,6 +114,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
 
       return {
         ...state,
+        error: null,
         players: newPlayers,
       };
     }
