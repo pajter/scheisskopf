@@ -18,7 +18,7 @@ export const ranks: CardRank[] = [
   14, // Ace
 ];
 
-export const suits: CardSuit[] = ['club', 'spade', 'diamond', 'heart'];
+export const suits: CardSuit[] = ['club', 'diamond', 'heart', 'spade'];
 
 export const getDeck = (shuffle: boolean = true): CardId[] => {
   const deck: CardId[] = [];
@@ -42,12 +42,12 @@ export const getCardId = ({
 }: {
   suit: CardSuit;
   rank: CardRank;
-}): CardId => `${suit}:${rank}`;
+}): CardId => `${rank}:${suit}`;
 
 export const getCardObj = (
   cardId: string
 ): { suit: CardSuit; rank: CardRank } => {
-  const [suit, rank] = cardId.split(':');
+  const [rank, suit] = cardId.split(':');
 
   return {
     suit: suit as CardSuit,
@@ -68,12 +68,6 @@ export const getRankName = (rank: CardRank): string => {
     default:
       return `${rank}`;
   }
-};
-
-export const getCardSortFn = () => {
-  return (a: CardId, b: CardId) => {
-    return getCardObj(a).rank - getCardObj(b).rank;
-  };
 };
 
 export const getIterator = <T>(array: T[]) => {

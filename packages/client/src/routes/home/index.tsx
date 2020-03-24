@@ -1,7 +1,7 @@
 import React from 'react';
 import reverse from 'lodash-es/reverse';
 import { useSelector, useDispatch } from '../../redux/hooks';
-import { getCardObj, getCardSortFn, getRankName } from '../../util';
+import { getCardObj, getRankName } from '../../util';
 import { CardId } from '../../types';
 import { GAME_ERROR_ILLEGAL_MOVE_BLIND } from '../../redux/game/error';
 
@@ -204,8 +204,8 @@ export function HomeRoute() {
       </div>
 
       {players.map(user => {
-        const cardsHand = reverse(user.cardsHand.sort(getCardSortFn()));
-        const cardsOpen = reverse(user.cardsOpen.sort(getCardSortFn()));
+        const cardsHand = reverse(user.cardsHand.sort());
+        const cardsOpen = reverse(user.cardsOpen.sort());
         const cardsClosed = user.cardsClosed;
         return (
           <div className="playfield" key={user.id}>

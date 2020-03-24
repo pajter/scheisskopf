@@ -48,6 +48,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
 
       const iteratePlayers = getIterator(players);
       let [closed, open, hand] = calcCardCounts(players.length);
+      const startCardHandCount = hand;
       while (closed) {
         iteratePlayers.next().cardsClosed.push(deck.shift()!);
         closed--;
@@ -65,7 +66,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
         ...state,
 
         dealerUserId: action.userId,
-        startCardHandCount: hand,
+        startCardHandCount,
         tableDeck: deck,
         tableDiscarded: [],
         tablePile: [],
@@ -227,20 +228,16 @@ export const reducer = (state: State = initialState, action: Action): State => {
             }.`,
             GAME_ERROR_ILLEGAL_MOVE
           );
-          break;
+          return {
+            ...state,
+            error,
+          };
         }
 
-        // Cards can be remove from all piles
+        // Cards can be removed from all piles
         player.cardsHand = player.cardsHand.filter(c => c !== card);
         player.cardsOpen = player.cardsOpen.filter(c => c !== card);
         player.cardsClosed = player.cardsClosed.filter(c => c !== card);
-      }
-
-      if (error) {
-        return {
-          ...state,
-          error,
-        };
       }
 
       // Add cards to pile
