@@ -330,8 +330,10 @@ export const reducer = (state: State = initialState, action: Action): State => {
         tableDiscarded = [...tableDiscarded, ...tablePile];
         tablePile = [];
 
-        // Keep same player
-        nextPlayerUserId = player.id;
+        // Keep same player if not yet finished
+        if (!player.isFinished) {
+          nextPlayerUserId = player.id;
+        }
       }
 
       // If only one player left
