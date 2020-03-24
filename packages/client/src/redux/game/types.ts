@@ -18,11 +18,6 @@ export interface State {
   tableDiscarded: CardId[];
 
   /**
-   * userId of dealer
-   */
-  dealerUserId: string | null;
-
-  /**
    * userId of current player
    */
   currentPlayerUserId: string | null;
@@ -42,14 +37,32 @@ export interface State {
   error: GameError | null;
 }
 
+export type Player = {
+  id: string;
+  cardsOpen: CardId[];
+  cardsClosed: CardId[];
+  cardsHand: CardId[];
+  isFinished: boolean;
+  isDealer: boolean;
+  turns: number;
+};
+
 export type Action =
+  | { type: 'RESET' }
+  | {
+      type: 'JOIN';
+      userId: string;
+    }
+  | {
+      type: 'LEAVE';
+      userId: string;
+    }
   | {
       type: 'DEAL';
       userId: string;
-      players: { id: string; position: number }[];
     }
   | {
-      type: 'SWAP_CARDS';
+      type: 'SWAP';
       userId: string;
       cardsHand: CardId[];
       cardsOpen: CardId[];
@@ -58,13 +71,3 @@ export type Action =
   | { type: 'DRAW'; userId: string }
   | { type: 'PLAY'; userId: string; cards: CardId[] }
   | { type: 'PICK'; userId: string; ownCards?: CardId[] };
-
-export type Player = {
-  id: string;
-  position: number;
-  cardsOpen: CardId[];
-  cardsClosed: CardId[];
-  cardsHand: CardId[];
-  isFinished: boolean;
-  turns: number;
-};

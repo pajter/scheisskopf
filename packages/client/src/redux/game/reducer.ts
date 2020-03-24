@@ -26,7 +26,7 @@ export const initialState: State = {
   tableDeck: [],
   tableDiscarded: [],
   players: [],
-  dealerUserId: null,
+
   currentPlayerUserId: null,
   startCardHandCount: null,
   state: 'pre-deal',
@@ -36,27 +36,46 @@ export const initialState: State = {
 
 export const reducer = (state: State = initialState, action: Action): State => {
   switch (action.type) {
+    case 'RESET': {
+      return { ...initialState };
+    }
+
+    case 'JOIN': {
+      const newPlayer = getPlayer(action.userId, state.players.length);
+      return { ...state, players: [...state.players, newPlayer] };
+    }
+
+    case 'LEAVE':
+      return {
+        ...state,
+        players: state.players.filter(({ id }) => id !== action.userId),
+      };
+
     case 'DEAL': {
       // Get shuffled deck
       const deck = getDeck(true);
 
-      // Get player objects for each user in this game
-      const players: Player[] = action.players
-        .map(({ id, position }) => getPlayer(id, position))
-        // Sort by position
-        .sort((a, b) => a.position - b.position);
-
+      const playerCount = state.players.length;
+      const players = [...state.players];
+      players[
+        players.findIndex(({ id }) => id === action.userId)
+      ].isDealer = true;
       const iteratePlayers = getIterator(players);
-      let [closed, open, hand] = calcCardCounts(players.length);
-      const startCardHandCount = hand;
+      const counts = calcCardCounts(playerCount);
+      const startCardHandCount = counts.hand;
+
+      // Multiply each by amount of players to get total amount of cards to deal
+      let closed = counts.closed * playerCount;
       while (closed) {
         iteratePlayers.next().cardsClosed.push(deck.shift()!);
         closed--;
       }
+      let open = counts.open * playerCount;
       while (open) {
         iteratePlayers.next().cardsOpen.push(deck.shift()!);
         open--;
       }
+      let hand = counts.hand * playerCount;
       while (hand) {
         iteratePlayers.next().cardsHand.push(deck.shift()!);
         hand--;
@@ -65,7 +84,6 @@ export const reducer = (state: State = initialState, action: Action): State => {
       return {
         ...state,
 
-        dealerUserId: action.userId,
         startCardHandCount,
         tableDeck: deck,
         tableDiscarded: [],
@@ -73,11 +91,12 @@ export const reducer = (state: State = initialState, action: Action): State => {
         currentPlayerUserId: null,
         error: null,
         startingCard: null,
-        players: players,
+        players: iteratePlayers.src,
         state: 'pre-game',
       };
     }
-    case 'SWAP_CARDS': {
+
+    case 'SWAP': {
       if (action.cardsHand.length !== action.cardsOpen.length) {
         return {
           ...state,
@@ -119,6 +138,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
         players: newPlayers,
       };
     }
+
     case 'START': {
       const { startingPlayer, startingCard } = findStartingPlayer(
         state.players
@@ -136,6 +156,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
         state: 'playing',
       };
     }
+
     case 'PLAY': {
       // Clone player
       const playerIdx = state.players.findIndex(
@@ -307,6 +328,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
         currentPlayerUserId: nextPlayerUserId,
       };
     }
+
     case 'PICK': {
       const playerIdx = state.players.findIndex(
         player => player.id === action.userId
@@ -374,33 +396,25 @@ const getNextPlayer = (
   players: Player[],
   skip: number = 0
 ): Player => {
-  // Filter player and sort by position
-  const availablePlayers = players
-    .filter(player => !player.isFinished)
-    .sort((a, b) => a.position - b.position);
-
-  // Find next player by getting first available player at higher position than current player
-  let nextPlayerIdx = availablePlayers.findIndex(
-    ({ position }) => position > currentPlayer.position
+  const currentPlayerIdx = players.findIndex(
+    ({ id }) => id === currentPlayer.id
   );
-  // If there's no player with a higher position
-  if (nextPlayerIdx === -1) {
-    // Back to first...
-    nextPlayerIdx = 0;
-  }
+
+  const iteratePlayers = getIterator([...players]);
+  // Set iterator to current player
+  iteratePlayers.set(currentPlayerIdx);
+  // Move to next player that is still in the game
+  iteratePlayers.forward(player => !player.isFinished);
 
   while (skip > 0) {
-    // Increase player idx
-    nextPlayerIdx += 1;
-    if (nextPlayerIdx > availablePlayers.length - 1) {
-      // Back to first...
-      nextPlayerIdx = 0;
+    const nextPlayer = iteratePlayers.next();
+    if (!nextPlayer.isFinished) {
+      // Decrease skip only for players that are in the game
+      skip--;
     }
-
-    skip--;
   }
 
-  const nextPlayer = availablePlayers[nextPlayerIdx];
+  const nextPlayer = iteratePlayers.get();
   if (!nextPlayer) {
     throw new Error('Could not find next player!?');
   }
@@ -559,10 +573,13 @@ const getPlayer = (id: string, position: number) => ({
   cardsHand: [],
   cardsOpen: [],
   isFinished: false,
+  isDealer: false,
   turns: 0,
 });
 
-const calcCardCounts = (playerCount: number): [number, number, number] => {
+const calcCardCounts = (
+  playerCount: number
+): { closed: number; open: number; hand: number } => {
   // Start at 3 for each
   let closed = 3;
   let open = 3;
@@ -596,10 +613,5 @@ const calcCardCounts = (playerCount: number): [number, number, number] => {
     }
   }
 
-  // Multiply each by amount of players to get total amount of cards to deal
-  return [closed, open, hand].map(i => i * playerCount) as [
-    number,
-    number,
-    number
-  ];
+  return { closed, open, hand };
 };

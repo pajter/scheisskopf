@@ -99,6 +99,7 @@ function CardButton({
 
 export function HomeRoute() {
   const game = useSelector(state => state.game);
+  const users = useSelector(state => state.main.users);
   const players = useSelector(state =>
     state.game.players.filter(player => !player.isFinished)
   );
@@ -117,17 +118,24 @@ export function HomeRoute() {
     );
   }, [game.currentPlayerUserId]);
 
-  const deal = () => {
+  const join = (userId: string) => {
+    dispatch({
+      type: 'JOIN',
+      userId,
+    });
+  };
+
+  const leave = (userId: string) => {
+    dispatch({
+      type: 'LEAVE',
+      userId,
+    });
+  };
+
+  const deal = (userId: string) => {
     dispatch({
       type: 'DEAL',
-      userId: 'a',
-      players: [
-        { id: 'a', position: 0 },
-        { id: 'b', position: 1 },
-        { id: 'c', position: 2 },
-        { id: 'd', position: 3 },
-        { id: 'e', position: 4 },
-      ],
+      userId,
     });
   };
 
@@ -156,7 +164,7 @@ export function HomeRoute() {
 
   const swap = (userId: string) => {
     dispatch({
-      type: 'SWAP_CARDS',
+      type: 'SWAP',
       userId,
       cardsHand: getSelectedCards(userId, 'hand'),
       cardsOpen: getSelectedCards(userId, 'open'),
@@ -166,8 +174,14 @@ export function HomeRoute() {
   return (
     <div>
       <div className="stick">
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <button onClick={deal}>deal</button>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <button onClick={() => dispatch({ type: 'RESET' })}>reset</button>
           {game.state === 'pre-game' && <button onClick={start}>start</button>}
         </div>
 
@@ -203,29 +217,60 @@ export function HomeRoute() {
         )}
       </div>
 
-      {players.map(user => {
-        const cardsHand = reverse(user.cardsHand.sort());
-        const cardsOpen = reverse(user.cardsOpen.sort());
-        const cardsClosed = user.cardsClosed;
+      {game.state === 'pre-deal' && (
+        <>
+          {users
+            .filter(({ id }) => !players.map(({ id }) => id).includes(id))
+            .map(user => {
+              return (
+                <div
+                  className="playfield"
+                  key={user.id}
+                  style={{ display: 'flex', alignItems: 'center' }}
+                >
+                  <div style={{ flex: 1 }}>
+                    User: <b>{user.name}</b>
+                  </div>
+                  <button onClick={() => join(user.id)}>join</button>
+                </div>
+              );
+            })}
+        </>
+      )}
+
+      {players.map(player => {
+        const cardsHand = reverse(player.cardsHand.sort());
+        const cardsOpen = reverse(player.cardsOpen.sort());
+        const cardsClosed = player.cardsClosed;
+
         return (
-          <div className="playfield" key={user.id}>
+          <div className="playfield" key={player.id}>
             <div className="user-header">
-              <h2>{user.id}</h2>
+              <h2>
+                {users.find(({ id }) => id === player.id)?.name}{' '}
+                {player.isDealer ? '(dealer)' : ''}
+              </h2>
+              {game.state === 'pre-deal' && (
+                <>
+                  <button onClick={() => deal(player.id)}>deal</button>
+                  <button onClick={() => leave(player.id)}>leave</button>
+                </>
+              )}
               {game.state === 'pre-game' && (
                 <>
-                  <button onClick={() => swap(user.id)}>swap</button>
+                  <button onClick={() => swap(player.id)}>swap</button>
                 </>
               )}
               {game.state === 'playing' &&
-                game.currentPlayerUserId === user.id && (
+                game.currentPlayerUserId === player.id && (
                   <>
-                    <button onClick={() => pick(user.id)}>Pick</button>
+                    <button onClick={() => pick(player.id)}>Pick</button>
                     <button
                       disabled={
                         game.error?.code === GAME_ERROR_ILLEGAL_MOVE_BLIND
                       }
                       onClick={() => {
-                        play(user.id, getSelectedCards(user.id));
+                        play(player.id, getSelectedCards(player.id));
                       }}
                     >
                       Play
@@ -245,14 +290,14 @@ export function HomeRoute() {
                         <CardButton
                           key={cardHand}
                           card={cardHand}
-                          userId={user.id}
+                          userId={player.id}
                           type="hand"
                           isDisabled={
                             game.state === 'pre-game'
                               ? false
                               : !(
                                   game.state === 'playing' &&
-                                  game.currentPlayerUserId === user.id
+                                  game.currentPlayerUserId === player.id
                                 )
                           }
                         />
@@ -268,15 +313,15 @@ export function HomeRoute() {
                         <CardButton
                           key={card}
                           card={card}
-                          userId={user.id}
+                          userId={player.id}
                           type="open"
                           isDisabled={
                             game.state === 'pre-game'
                               ? false
                               : !(
                                   game.state === 'playing' &&
-                                  game.currentPlayerUserId === user.id &&
-                                  user.cardsHand.length === 0
+                                  game.currentPlayerUserId === player.id &&
+                                  player.cardsHand.length === 0
                                 )
                           }
                         />
@@ -292,18 +337,18 @@ export function HomeRoute() {
                         <CardButton
                           key={card}
                           card={card}
-                          userId={user.id}
+                          userId={player.id}
                           type="closed"
                           hidden={true}
                           isDisabled={
                             !(
                               game.state === 'playing' &&
-                              game.currentPlayerUserId === user.id &&
-                              user.cardsHand.length === 0 &&
-                              user.cardsOpen.length === 0
+                              game.currentPlayerUserId === player.id &&
+                              player.cardsHand.length === 0 &&
+                              player.cardsOpen.length === 0
                             ) ||
                             (game.state === 'playing' &&
-                              game.currentPlayerUserId === user.id &&
+                              game.currentPlayerUserId === player.id &&
                               game.error?.code ===
                                 GAME_ERROR_ILLEGAL_MOVE_BLIND)
                           }

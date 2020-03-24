@@ -36,6 +36,7 @@ export const getDeck = (shuffle: boolean = true): CardId[] => {
   }
 };
 
+// TODO: come up with card id system that is sortable
 export const getCardId = ({
   suit,
   rank,
@@ -70,7 +71,7 @@ export const getRankName = (rank: CardRank): string => {
   }
 };
 
-export const getIterator = <T>(array: T[]) => {
+export const getIterator = <T>(src: T[]) => {
   const handlers: {
     loop: (() => void)[];
   } = {
@@ -78,6 +79,7 @@ export const getIterator = <T>(array: T[]) => {
   };
   let curIdx = 0;
   const iterator = {
+    src,
     on: (event: 'loop', handler: () => void) => {
       handlers[event].push(handler);
     },
@@ -85,11 +87,11 @@ export const getIterator = <T>(array: T[]) => {
       curIdx = idx;
     },
     get: () => {
-      return array[curIdx];
+      return src[curIdx];
     },
     next: () => {
       curIdx++;
-      if (curIdx > array.length - 1) {
+      if (curIdx > src.length - 1) {
         curIdx = 0;
         handlers.loop.forEach(f => f());
       }
@@ -98,7 +100,7 @@ export const getIterator = <T>(array: T[]) => {
     prev: () => {
       curIdx--;
       if (curIdx < 0) {
-        curIdx = array.length - 1;
+        curIdx = src.length - 1;
         handlers.loop.forEach(f => f());
       }
       return iterator.get();
@@ -106,7 +108,7 @@ export const getIterator = <T>(array: T[]) => {
     forward: (assert: (i: T) => boolean) => {
       let n = 0;
       while (!assert(iterator.next())) {
-        if (n > array.length) {
+        if (n > src.length) {
           break;
         }
         n++;
@@ -115,7 +117,7 @@ export const getIterator = <T>(array: T[]) => {
     reverse: (assert: (i: T) => boolean) => {
       let n = 0;
       while (!assert(iterator.prev())) {
-        if (n > array.length) {
+        if (n > src.length) {
           break;
         }
         n++;
