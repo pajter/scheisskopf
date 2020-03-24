@@ -18,7 +18,7 @@ export type Action =
   | {
       type: 'DEAL';
       userId: string;
-      gameUsers: { id: string; position: number }[];
+      players: { id: string; position: number }[];
     }
   | {
       type: 'SWAP_CARDS';

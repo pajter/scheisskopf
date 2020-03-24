@@ -119,7 +119,7 @@ export function HomeRoute() {
     dispatch({
       type: 'DEAL',
       userId: 'a',
-      gameUsers: [
+      players: [
         { id: 'a', position: 0 },
         { id: 'b', position: 1 },
         { id: 'c', position: 2 },

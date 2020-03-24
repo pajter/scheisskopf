@@ -40,81 +40,39 @@ export const reducer = (state: State = initialState, action: Action): State => {
       // Get shuffled deck
       const deck = getDeck(true);
 
-      // Get GameUser objects for each user in this game
-      const gameUsers: Player[] = action.gameUsers.map(({ id, position }) => {
-        return {
-          id,
-          position,
-          cardsClosed: [],
-          cardsHand: [],
-          cardsOpen: [],
-          isFinished: false,
-          turns: 0,
-        };
-      });
+      // Get player objects for each user in this game
+      const players: Player[] = action.players
+        .map(({ id, position }) => getPlayer(id, position))
+        // Sort by position
+        .sort((a, b) => a.position - b.position);
 
-      // TODO: calc based on number of users
-      const startCardHandCount = 3;
-      const startCardOpenCount = 3;
-      let userPileCounts = {
-        cardsClosed: 3,
-        cardsOpen: startCardOpenCount,
-        cardsHand: startCardHandCount,
-      };
-      const userPileOrder: ['cardsClosed', 'cardsOpen', 'cardsHand'] = [
-        'cardsClosed',
-        'cardsOpen',
-        'cardsHand',
-      ];
-
-      // Start with first cardType in order
-      let userPile = userPileOrder.shift()!;
-      let userIdx = 0;
-      while (true) {
-        if (userIdx > gameUsers.length - 1) {
-          // Back to first user
-          userIdx = 0;
-        }
-
-        const currentUser = gameUsers[userIdx];
-
-        // Switch to next card type when first user has received enough cards
-        if (currentUser[userPile].length === userPileCounts[userPile]) {
-          const nextUserCardType = userPileOrder.shift();
-
-          if (!nextUserCardType) {
-            // Stop loop because all card types have been dealt
-            break;
-          }
-
-          userPile = nextUserCardType;
-        }
-
-        // Add card to user's card type
-        const nextCard = deck.shift();
-        if (!nextCard) {
-          throw new Error(
-            'Something went wrong with dealing. Ran out of cards!'
-          );
-        }
-        currentUser[userPile!].push(nextCard);
-
-        // Move to next user
-        userIdx++;
+      const iteratePlayers = getIterator(players);
+      let [closed, open, hand] = calcCardCounts(players.length);
+      while (closed) {
+        iteratePlayers.next().cardsClosed.push(deck.shift()!);
+        closed--;
+      }
+      while (open) {
+        iteratePlayers.next().cardsOpen.push(deck.shift()!);
+        open--;
+      }
+      while (hand) {
+        iteratePlayers.next().cardsHand.push(deck.shift()!);
+        hand--;
       }
 
       return {
         ...state,
 
         dealerUserId: action.userId,
-        startCardHandCount,
+        startCardHandCount: hand,
         tableDeck: deck,
         tableDiscarded: [],
         tablePile: [],
         currentPlayerUserId: null,
         error: null,
         startingCard: null,
-        players: gameUsers,
+        players: players,
         state: 'pre-game',
       };
     }
@@ -605,4 +563,56 @@ export const findStartingPlayer = (players: Player[]) => {
     rank: iterateRanks.get(),
   };
   return { startingPlayer, startingCard };
+};
+
+const getPlayer = (id: string, position: number) => ({
+  id,
+  position,
+  cardsClosed: [],
+  cardsHand: [],
+  cardsOpen: [],
+  isFinished: false,
+  turns: 0,
+});
+
+const calcCardCounts = (playerCount: number): [number, number, number] => {
+  // Start at 3 for each
+  let closed = 3;
+  let open = 3;
+  let hand = 3;
+
+  // Min amount of cards
+  const closedMin = 2;
+  const openMin = 1;
+  const handMin = 1;
+
+  const cardsPerPlayer = 52 / playerCount;
+
+  // While the amount of cards we want to deal is greater than the cards available per player
+  while (closed + open + hand > Math.floor(cardsPerPlayer)) {
+    // Subtract cards from hand first
+    if (hand > handMin) {
+      hand--;
+      continue;
+    }
+
+    // Subtract open cards
+    if (open > openMin) {
+      open--;
+      continue;
+    }
+
+    // Subtract closed cards
+    if (closed > closedMin) {
+      closed--;
+      continue;
+    }
+  }
+
+  // Multiply each by amount of players to get total amount of cards to deal
+  return [closed, open, hand].map(i => i * playerCount) as [
+    number,
+    number,
+    number
+  ];
 };
