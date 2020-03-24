@@ -83,7 +83,7 @@ export const getIterator = <T>(array: T[]) => {
     },
     next: () => {
       curIdx++;
-      if (curIdx > array.length) {
+      if (curIdx > array.length - 1) {
         curIdx = 0;
         handlers.loop.forEach(f => f());
       }
