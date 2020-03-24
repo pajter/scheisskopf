@@ -63,3 +63,58 @@ export const getCardSortFn = () => {
     return getRankIdx(a) - getRankIdx(b);
   };
 };
+
+export const getIterator = <T>(array: T[]) => {
+  const handlers: {
+    loop: (() => void)[];
+  } = {
+    loop: [],
+  };
+  let curIdx = 0;
+  const iterator = {
+    on: (event: 'loop', handler: () => void) => {
+      handlers[event].push(handler);
+    },
+    set: (idx: number) => {
+      curIdx = idx;
+    },
+    get: () => {
+      return array[curIdx];
+    },
+    next: () => {
+      curIdx++;
+      if (curIdx > array.length) {
+        curIdx = 0;
+        handlers.loop.forEach(f => f());
+      }
+      return iterator.get();
+    },
+    prev: () => {
+      curIdx--;
+      if (curIdx < 0) {
+        curIdx = array.length - 1;
+        handlers.loop.forEach(f => f());
+      }
+      return iterator.get();
+    },
+    forward: (assert: (i: T) => boolean) => {
+      let n = 0;
+      while (!assert(iterator.next())) {
+        if (n > array.length) {
+          break;
+        }
+        n++;
+      }
+    },
+    reverse: (assert: (i: T) => boolean) => {
+      let n = 0;
+      while (!assert(iterator.prev())) {
+        if (n > array.length) {
+          break;
+        }
+        n++;
+      }
+    },
+  };
+  return iterator;
+};

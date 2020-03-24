@@ -9,6 +9,7 @@ import {
   getRankIdx,
   getCardId,
   getCardFromId,
+  getIterator,
 } from '../../util';
 import { Card } from '../../types';
 import {
@@ -54,9 +55,10 @@ export const reducer = (state: State = initialState, action: Action): State => {
 
       // TODO: calc based on number of users
       const startCardHandCount = 3;
+      const startCardOpenCount = 3;
       let userPileCounts = {
         cardsClosed: 3,
-        cardsOpen: 3,
+        cardsOpen: startCardOpenCount,
         cardsHand: startCardHandCount,
       };
       const userPileOrder: ['cardsClosed', 'cardsOpen', 'cardsHand'] = [
@@ -167,47 +169,19 @@ export const reducer = (state: State = initialState, action: Action): State => {
       };
     }
     case 'START': {
-      // Find user that gets to start
-      let searchSuits = [...suits];
-      let searchCard: Card = { suit: searchSuits.shift()!, rank: '4' };
-      let foundPlayer: Player | undefined;
+      const { startingPlayer, startingCard } = findStartingPlayer(
+        state.players
+      );
 
-      while (!foundPlayer) {
-        state.players.find(player => {
-          // Note: discuss whether or not it's allowed to have a club 4 in open cards
-
-          // Search in hand only
-          if (player.cardsHand.find(cardsEqualFn(searchCard))) {
-            foundPlayer = player;
-
-            // Break users loop
-            return true;
-          }
-        });
-
-        if (foundPlayer) {
-          break;
-        }
-
-        // If we haven't found it after scanning all users, move on to the next card
-        const higherCard = getHigherCard(searchCard);
-        if (!higherCard) {
-          // Start from 4 on next suit
-          searchCard = { suit: searchSuits.shift()!, rank: '4' };
-        } else {
-          searchCard = higherCard;
-        }
-      }
-
-      if (!foundPlayer) {
+      if (!startingPlayer) {
         throw new Error('Could not find user with required card!?');
       }
 
       return {
         ...state,
-        currentPlayerUserId: foundPlayer.id,
+        currentPlayerUserId: startingPlayer.id,
 
-        startingCard: searchCard,
+        startingCard,
         state: 'playing',
       };
     }
@@ -489,18 +463,6 @@ const removeCard = (card: Card, cards: Card[]): Card[] => {
   return cards.filter(c => !fn(c));
 };
 
-const getHigherCard = (card: Card): Card | undefined => {
-  const rankIdx = ranks.findIndex(rank => rank === card.rank);
-  let nextRankIdx = rankIdx + 1;
-  if (nextRankIdx > ranks.length - 1) {
-    // Card higher than ace doesn't exist
-    return;
-  }
-
-  // Return new card with previous or next rank
-  return { ...card, rank: ranks[nextRankIdx] };
-};
-
 const getIllegalMove = (
   playingCard: Card,
   cards?: Card[]
@@ -596,4 +558,49 @@ export const areCardsTheSameRank = (cards: Card[]): boolean => {
   }
 
   return true;
+};
+
+export const findStartingPlayer = (players: Player[]) => {
+  let iterateSuits = getIterator(suits);
+  let iterateRanks = getIterator(
+    // Filter 2s and 3s
+    [...ranks].filter(r => !['2', '3'].includes(r))
+  );
+  iterateSuits.on('loop', () => {
+    // Move on to next rank once we've looped suits
+    iterateRanks.next();
+  });
+
+  let startingPlayer: Player | undefined;
+
+  while (!startingPlayer) {
+    players.find(player => {
+      // Note: discuss whether or not it's allowed to have a club 4 in open cards
+
+      // Search in hand only
+      if (
+        player.cardsHand.find(
+          cardsEqualFn({ suit: iterateSuits.get(), rank: iterateRanks.get() })
+        )
+      ) {
+        startingPlayer = player;
+
+        // Break users loop
+        return true;
+      }
+    });
+
+    if (startingPlayer) {
+      break;
+    }
+
+    // If we haven't found it after scanning all users, move on to the next card
+    iterateSuits.next();
+  }
+
+  const startingCard: Card = {
+    suit: iterateSuits.get(),
+    rank: iterateRanks.get(),
+  };
+  return { startingPlayer, startingCard };
 };
