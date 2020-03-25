@@ -1,4 +1,4 @@
-import { createStore, combineReducers } from 'redux';
+import { createStore, combineReducers, Store } from 'redux';
 import {
   reducer as mainReducer,
   initialState as mainInitialState,
@@ -7,9 +7,9 @@ import {
   reducer as gameReducer,
   initialState as gameInitialState,
 } from './game/reducer';
-import { RootState } from './types';
+import { RootState, RootAction } from './types';
 
-export let store: ReturnType<typeof createStore>;
+export let store: Store<RootState, RootAction>;
 
 export const getStore = (initialState: Partial<RootState> = {}) => {
   if (store) {

@@ -33,11 +33,19 @@ export interface State {
   startingCard: CardId | null;
 
   players: Player[];
-  state: 'pre-deal' | 'pre-game' | 'playing' | 'paused' | 'ended';
+
+  state:
+    | 'pre-deal'
+    | 'pre-game'
+    | 'playing'
+    | 'paused'
+    | 'clear-the-pile'
+    | 'ended';
+
   error: GameError | null;
 }
 
-export type Player = {
+export interface Player {
   id: string;
   cardsOpen: CardId[];
   cardsClosed: CardId[];
@@ -45,13 +53,22 @@ export type Player = {
   isFinished: boolean;
   isDealer: boolean;
   turns: number;
-};
+  botSettings?: BotSettings;
+}
+
+export interface BotSettings {
+  difficulty: 'easy' | 'normal' | 'hard';
+}
 
 export type Action =
   | { type: 'RESET' }
   | {
       type: 'JOIN';
       userId: string;
+    }
+  | {
+      type: 'JOIN_BOT';
+      botSettings: BotSettings;
     }
   | {
       type: 'LEAVE';
@@ -70,4 +87,6 @@ export type Action =
   | { type: 'START'; userId: string }
   | { type: 'DRAW'; userId: string }
   | { type: 'PLAY'; userId: string; cards: CardId[] }
+  | { type: 'CLEAR_THE_PILE' }
+  | { type: 'PAUSE' }
   | { type: 'PICK'; userId: string; ownCards?: CardId[] };

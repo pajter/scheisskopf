@@ -1,4 +1,5 @@
-import { State as MainState } from './main/types';
+import { State as MainState, Action as MainAction } from './main/types';
+
 import { State as GameState, Action as GameAction } from './game/types';
 
 export interface RootState {
@@ -6,4 +7,4 @@ export interface RootState {
   game: GameState;
 }
 
-export type RootAction = GameAction;
+export type RootAction = GameAction & MainAction;

@@ -100,7 +100,6 @@ function CardButton({
 
 export function HomeRoute() {
   const game = useSelector(state => state.game);
-  const users = useSelector(state => state.main.users);
   const players = useSelector(state =>
     state.game.players.filter(player => !player.isFinished)
   );
@@ -123,6 +122,13 @@ export function HomeRoute() {
     dispatch({
       type: 'JOIN',
       userId,
+    });
+  };
+
+  const joinBot = () => {
+    dispatch({
+      type: 'JOIN_BOT',
+      botSettings: { difficulty: 'easy' },
     });
   };
 
@@ -172,6 +178,12 @@ export function HomeRoute() {
     });
   };
 
+  const clearThePile = () => {
+    dispatch({
+      type: 'CLEAR_THE_PILE',
+    });
+  };
+
   return (
     <div>
       <div className="stick">
@@ -207,6 +219,13 @@ export function HomeRoute() {
           ))}
         </div>
 
+        {game.state === 'clear-the-pile' && (
+          <>
+            <br />
+            <button onClick={clearThePile}>CLEAR THE DECK</button>
+          </>
+        )}
+
         {game.error && (
           <>
             <br />
@@ -219,37 +238,43 @@ export function HomeRoute() {
       </div>
 
       {game.state === 'pre-deal' && (
-        <>
-          {users
-            .filter(({ id }) => !players.map(({ id }) => id).includes(id))
-            .map(user => {
-              return (
-                <div
-                  className="playfield"
-                  key={user.id}
-                  style={{ display: 'flex', alignItems: 'center' }}
-                >
-                  <div style={{ flex: 1 }}>
-                    User: <b>{user.name}</b>
-                  </div>
-                  <button onClick={() => join(user.id)}>join</button>
-                </div>
-              );
-            })}
-        </>
+        <div className="playfield">
+          <input type="text" placeholder="Player ID" id="player_id" />
+          <button
+            onClick={() => {
+              const inp = document.getElementById(
+                'player_id'
+              ) as HTMLInputElement;
+
+              join(inp.value);
+
+              // Clear input
+              inp.value = '';
+            }}
+          >
+            join
+          </button>
+          <br />
+          <button
+            onClick={() => {
+              joinBot();
+            }}
+          >
+            Add bot player
+          </button>
+        </div>
       )}
 
       {players.map(player => {
-        const cardsHand = reverse(player.cardsHand.sort());
-        const cardsOpen = reverse(player.cardsOpen.sort());
+        const cardsHand = reverse(player.cardsHand);
+        const cardsOpen = reverse(player.cardsOpen);
         const cardsClosed = player.cardsClosed;
 
         return (
           <div className="playfield" key={player.id}>
             <div className="user-header">
               <h2>
-                {users.find(({ id }) => id === player.id)?.name}{' '}
-                {player.isDealer ? '(dealer)' : ''}
+                {player.id} {player.isDealer ? '(dealer)' : ''}
               </h2>
               {game.state === 'pre-deal' && (
                 <>
@@ -280,7 +305,7 @@ export function HomeRoute() {
                 )}
             </div>
 
-            {game.state === 'ended' && <h1>💩🗣 SCHEISKOPFFFF!!!</h1>}
+            {game.state === 'ended' && <h1>💩🗣 SCHEISSKOPFFFF!!!</h1>}
 
             {game.state !== 'ended' && (
               <div className="user-stacks">
