@@ -41,7 +41,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
     }
 
     case 'JOIN': {
-      const newPlayer = getPlayer(action.userId, state.players.length);
+      const newPlayer = getNewPlayerObj(action.userId, state.players.length);
       return { ...state, players: [...state.players, newPlayer] };
     }
 
@@ -128,14 +128,10 @@ export const reducer = (state: State = initialState, action: Action): State => {
         ...action.cardsHand,
       ];
 
-      // TODO: maybe find a way not to create a whole new players array?
-      const newPlayers = [...state.players];
-      newPlayers[currentPlayerIdx] = player;
-
       return {
         ...state,
         error: null,
-        players: newPlayers,
+        players: updatePlayers(state.players, player),
       };
     }
 
@@ -159,12 +155,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
 
     case 'PLAY': {
       // Clone player
-      const playerIdx = state.players.findIndex(
-        ({ id }) => id === action.userId
-      );
       const player = { ...getPlayerById(action.userId, state.players) };
-
-      let error: GameError | undefined;
 
       if (action.cards.length === 0) {
         return {
@@ -221,13 +212,10 @@ export const reducer = (state: State = initialState, action: Action): State => {
           player.cardsClosed = player.cardsClosed.filter(c => c !== firstCard);
           player.turns = player.turns + 1;
 
-          const players = [...state.players];
-          players[playerIdx] = player;
-
           return {
             ...state,
             tablePile,
-            players,
+            players: updatePlayers(state.players, player),
             error: new GameError(
               `Illegal move! Can not play a ${
                 getCardObj(firstCard).rank
@@ -243,15 +231,14 @@ export const reducer = (state: State = initialState, action: Action): State => {
         // Check if card can be played
         const illegalMove = getIllegalMove(card, state.tablePile);
         if (illegalMove) {
-          error = new GameError(
-            `Illegal move! Can not play a ${getCardObj(card).rank} on a ${
-              getCardObj(illegalMove).rank
-            }.`,
-            GAME_ERROR_ILLEGAL_MOVE
-          );
           return {
             ...state,
-            error,
+            error: new GameError(
+              `Illegal move! Can not play a ${getCardObj(card).rank} on a ${
+                getCardObj(illegalMove).rank
+              }.`,
+              GAME_ERROR_ILLEGAL_MOVE
+            ),
           };
         }
 
@@ -286,8 +273,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
         player.isFinished = true;
       }
 
-      const players = [...state.players];
-      players[playerIdx] = player;
+      const players = updatePlayers(state.players, player);
 
       // Check how many players are skipped by counting number of 8 cards played
       const skipPlayers = action.cards.filter(c => getCardObj(c).rank === 8)
@@ -295,8 +281,9 @@ export const reducer = (state: State = initialState, action: Action): State => {
 
       // Warn: pass new players data because (instead of players still in `state`)
       const nextPlayer = getNextPlayer(player, players, skipPlayers);
-
       let nextPlayerUserId = nextPlayer.id;
+
+      // Check for clear the deck
       let tableDiscarded = state.tableDiscarded;
       if (shouldClearTheDeck(tablePile)) {
         // Move pile to discarded
@@ -366,16 +353,15 @@ export const reducer = (state: State = initialState, action: Action): State => {
         player.cardsHand = [...player.cardsHand, ...action.ownCards];
       }
 
-      const newPlayers = [...state.players];
-      newPlayers[playerIdx] = player;
+      const newPlayers = updatePlayers(state.players, player);
 
-      const nextPlayer = getNextPlayer(player, state.players);
+      const nextPlayer = getNextPlayer(player, newPlayers);
 
       return {
         ...state,
         error: null,
-        players: newPlayers,
         tablePile: [],
+        players: newPlayers,
         currentPlayerUserId: nextPlayer.id,
       };
     }
@@ -566,7 +552,7 @@ export const findStartingPlayer = (players: Player[]) => {
   };
 };
 
-const getPlayer = (id: string, position: number) => ({
+const getNewPlayerObj = (id: string, position: number) => ({
   id,
   position,
   cardsClosed: [],
@@ -614,4 +600,14 @@ const calcCardCounts = (
   }
 
   return { closed, open, hand };
+};
+
+const updatePlayers = (players: Player[], newPlayer: Player) => {
+  const idx = players.findIndex(({ id }) => id === newPlayer.id);
+  if (idx <= 0) {
+    throw new Error('Could not find player?!');
+  }
+  const newPlayers = [...players];
+  newPlayers[idx] = { ...newPlayer };
+  return newPlayers;
 };
