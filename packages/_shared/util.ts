@@ -53,7 +53,7 @@ export const getCardObj = (
 
   return {
     suit: suit as CardSuit,
-    rank: +rank.replace('0', '') as CardRank,
+    rank: +rank.replace(/^0/, '') as CardRank,
   };
 };
 
