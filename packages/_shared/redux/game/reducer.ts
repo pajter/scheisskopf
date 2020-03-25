@@ -11,6 +11,7 @@ import {
   getIllegalMove,
   shouldClearTheDeck as shouldClearThePile,
   getTotalTurns,
+  getRankName,
 } from '../../util';
 
 import {
@@ -24,6 +25,7 @@ import {
   GAME_ERROR_USER_ALREADY_EXISTS,
 } from './error';
 import { State, Action, Player, BotSettings } from './types';
+import { CardId } from '../../types';
 
 let botId = 0;
 
@@ -261,9 +263,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
             players: updatePlayers(state.players, player),
 
             error: new GameError(
-              `Illegal move! Can not play a ${
-                getCardObj(blindCard).rank
-              } on a ${getCardObj(illegalMove).rank}.`,
+              getIllegalMoveErrMessage(blindCard, illegalMove),
               GAME_ERROR_ILLEGAL_MOVE_BLIND
             ),
           };
@@ -279,9 +279,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
             ...state,
 
             error: new GameError(
-              `Illegal move! Can not play a ${getCardObj(card).rank} on a ${
-                getCardObj(illegalMove).rank
-              }.`,
+              getIllegalMoveErrMessage(card, illegalMove),
               GAME_ERROR_ILLEGAL_MOVE
             ),
           };
@@ -584,4 +582,10 @@ const sortPlayerCards = (player: Player): void => {
   // Only sort hand and open cards
   player.cardsHand = player.cardsHand.sort();
   player.cardsOpen = player.cardsOpen.sort();
+};
+
+const getIllegalMoveErrMessage = (card: CardId, illegalCard: CardId) => {
+  return `Illegal move! Can not play a ${getRankName(
+    getCardObj(card).rank
+  )} on a ${getRankName(getCardObj(illegalCard).rank)}.`;
 };
