@@ -1,6 +1,6 @@
 import React from 'react';
 import { Provider } from 'react-redux';
-import { getStore } from '../../redux/store';
+import { getStore } from '../../../../_shared/redux/store';
 import { BrowserRouter, Switch, Route } from 'react-router-dom';
 
 import { HomeRoute } from '../../routes/home';

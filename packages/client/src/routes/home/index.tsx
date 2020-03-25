@@ -1,9 +1,10 @@
 import React from 'react';
 import reverse from 'lodash-es/reverse';
-import { useSelector, useDispatch } from '../../redux/hooks';
-import { getCardObj, getRankName } from '../../util';
-import { CardId } from '../../types';
-import { GAME_ERROR_ILLEGAL_MOVE_BLIND } from '../../redux/game/error';
+
+import { useSelector, useDispatch } from '../../../../_shared/redux/hooks';
+import { GAME_ERROR_ILLEGAL_MOVE_BLIND } from '../../../../_shared/redux/game/error';
+import { CardId } from '../../../../_shared/types';
+import { getCardObj, getRankName } from '../../../../_shared/util';
 
 const getSelectedCards = (
   userId: string,
