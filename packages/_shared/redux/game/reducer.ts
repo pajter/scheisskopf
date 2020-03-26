@@ -9,7 +9,7 @@ import {
   getCardId,
   areCardsTheSameRank,
   getIllegalMove,
-  shouldClearTheDeck as shouldClearThePile,
+  shouldClearThePile,
   getTotalTurns,
   getRankName,
 } from '../../util';

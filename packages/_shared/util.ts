@@ -172,37 +172,32 @@ export const groupCardsBySuit = (
   return ret;
 };
 
-export const shouldClearTheDeck = (cards: CardId[]) => {
+export const shouldClearThePile = (cards: string[]) => {
   if (getCardObj(cards[cards.length - 1]).rank === 10) {
     return true;
   }
 
-  let currentRank: number | undefined;
-  let count: number = 0;
   const reversedCardObjs = reverse([...cards]).map(getCardObj);
 
-  for (const cardObj of reversedCardObjs) {
-    if (typeof currentRank === 'undefined') {
-      currentRank = cardObj.rank;
+  let currentRank: number = reversedCardObjs[0].rank;
+  let count: number = 0;
 
-      // We have one card of this rank
-      count = 1;
+  for (const cardObj of reversedCardObjs) {
+    if (cardObj.rank === currentRank) {
+      // We have another card of this rank
+      count++;
     } else {
-      // TODO: this doesn't work somehow
       if (cardObj.rank === 3) {
         // Continue loop because 3 is invisible
         continue;
       }
 
-      if (cardObj.rank === currentRank) {
-        // We have another card of this rank
-        count++;
-      } else {
-        // Another rank was found, abort!
-        break;
-      }
+      // Another rank was found, abort!
+      break;
     }
   }
+
+  // 4 of the same ranks clears the deck
   return count === 4;
 };
 
