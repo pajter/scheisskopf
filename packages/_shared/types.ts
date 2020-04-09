@@ -1,10 +1,3 @@
-export interface User {
-  id: string;
-  name: string;
-  ip: string;
-  priority: number;
-}
-
 export type CardSuit = 'diamond' | 'heart' | 'spade' | 'club';
 
 export type CardRank =

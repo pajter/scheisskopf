@@ -1,3 +1,2 @@
-import '../../_shared';
-
+import './bootstrap';
 import './chrome';

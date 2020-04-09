@@ -1,15 +1,13 @@
-import sample from 'lodash-es/sample';
+import _ from 'lodash';
 
-import { getStore } from './redux/store';
-import { GAME_ERROR_ILLEGAL_MOVE_BLIND } from './redux/game/error';
-import { Player } from './redux/game/types';
-import {
-  getIllegalMove,
-  getTotalTurns,
-  groupCardsByRank,
-  getCardObj,
-} from './util';
-import { CardId, CardRank } from './types';
+import { CardId, CardRank } from '../../_shared/types';
+import { groupCardsByRank, getCardObj } from '../../_shared/util';
+
+import { getStore } from './redux/server/store';
+import { GAME_ERROR_ILLEGAL_MOVE_BLIND } from './redux/room/error';
+import { Player } from './redux/room/types';
+
+import { getTotalTurns, getIllegalMove } from './util';
 
 const store = getStore();
 
@@ -29,7 +27,7 @@ function update() {
 }
 
 async function play(player: Player) {
-  await new Promise(r => setTimeout(r, 1000));
+  await new Promise((r) => setTimeout(r, 1000));
 
   const state = store.getState();
   if (state.game.state === 'clear-the-pile') {
@@ -77,7 +75,7 @@ async function play(player: Player) {
       // Check for a possibility to clear the deck
       const foundRankThatClears = ((Object.keys(
         ranks
-      ) as unknown) as CardRank[]).find(rank => {
+      ) as unknown) as CardRank[]).find((rank) => {
         return ranks[rank]?.length === 4;
       });
       if (foundRankThatClears) {
@@ -124,7 +122,7 @@ async function play(player: Player) {
   }
 
   if (player.cardsClosed.length) {
-    const randomBlindCard = sample(player.cardsClosed)!;
+    const randomBlindCard = _.sample(player.cardsClosed)!;
     store.dispatch({
       type: 'PLAY',
       userId: player.id,
@@ -136,7 +134,7 @@ async function play(player: Player) {
 function getLegalAndIllegalCards(cards: CardId[]) {
   const legal: CardId[] = [];
   const illegal: CardId[] = [];
-  cards.forEach(card => {
+  cards.forEach((card) => {
     const illegalMove = getIllegalMove(card, store.getState().game.tablePile);
     if (illegalMove) {
       illegal.push(card);

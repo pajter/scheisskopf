@@ -1,13 +1,53 @@
+import fs from 'fs';
+import path from 'path';
+import util from 'util';
+import { createServer } from 'https';
 import express from 'express';
-import { createServer } from 'http';
+import socketIo from 'socket.io';
 
-const expressApp = express();
-const httpServer = createServer(expressApp);
+import { ScheissApp } from './app';
 
-expressApp.get('/', function(_, res) {
-  res.send('<h1>Hello world</h1>');
+declare global {
+  interface Console {
+    logObject: (obj: object) => void;
+  }
+}
+
+Object.defineProperty(console, 'logObject', {
+  value: (obj: object) =>
+    console.log(util.inspect(obj, false, 10, true /* enable colors */)),
 });
 
-httpServer.listen(3000, function() {
-  console.info('Listening on *:3000');
-});
+////////////////////////////
+
+const boot = () => {
+  const expressApp = express();
+  const server = createServer(
+    {
+      key: fs.readFileSync(path.join(__dirname, '../.ssl/server.key'), 'utf8'),
+      cert: fs.readFileSync(path.join(__dirname, '../.ssl/server.crt'), 'utf8'),
+    },
+    expressApp
+  );
+
+  const io = socketIo(server, {
+    pingInterval: 10000,
+  });
+
+  io.on('connection', (socket) => {
+    new ScheissApp(socket);
+  });
+
+  expressApp.get('/', function (_, res) {
+    const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+    res.send(html);
+  });
+
+  server.listen(3000, function () {
+    console.info('Listening on *:3000');
+  });
+
+  return server;
+};
+
+boot();

@@ -1,17 +1,21 @@
-import difference from 'lodash-es/difference';
+import _ from 'lodash';
 
 import {
-  getDeck,
   ranks,
   suits,
   getCardObj,
   getIterator,
   getCardId,
   areCardsTheSameRank,
+  getRankName,
+} from '../../../../_shared/util';
+import { CardId } from '../../../../_shared/types';
+
+import {
+  getDeck,
   getIllegalMove,
   shouldClearThePile,
   getTotalTurns,
-  getRankName,
 } from '../../util';
 
 import {
@@ -22,14 +26,12 @@ import {
   GAME_ERROR_ILLEGAL_MOVE_FIRST_TURN_MUST_HAVE_STARTING_CARD,
   GAME_ERROR_ILLEGAL_MOVE_BLIND,
   GAME_ERROR_ILLEGAL_MOVE,
-  GAME_ERROR_USER_ALREADY_EXISTS,
+  GAME_ERROR_USER_ALREADY_EXISTS as GAME_ERROR_PLAYER_ALREADY_EXISTS,
 } from './error';
-import { State, Action, Player, BotSettings } from './types';
-import { CardId } from '../../types';
-
-let botId = 0;
+import { State, Action, Player } from './types';
 
 export const initialState: State = {
+  roomId: '$$EMPTY',
   tablePile: [],
   tableDeck: [],
   tableDiscarded: [],
@@ -42,29 +44,34 @@ export const initialState: State = {
   startingCard: null,
 };
 
-export const reducer = (state: State = initialState, action: Action): State => {
+export const reducer = (
+  state: State = initialState,
+  action: Action & { userId?: string }
+): State => {
   switch (action.type) {
     case 'RESET': {
       return { ...initialState };
     }
 
     case 'JOIN': {
+      if (!action.userId) {
+        throw new Error('Missing userId!');
+      }
+      if (!action.socket) {
+        throw new Error('Missing socket!');
+      }
+
       if (state.players.find(({ id }) => id === action.userId)) {
         return {
           ...state,
           error: new GameError(
-            'User already exists.',
-            GAME_ERROR_USER_ALREADY_EXISTS
+            'Player already exists.',
+            GAME_ERROR_PLAYER_ALREADY_EXISTS
           ),
         };
       }
-      const newPlayer = getNewPlayerObj(action.userId);
+      const newPlayer = createPlayer(action.userId, action.name, action.socket);
       return { ...state, error: null, players: [...state.players, newPlayer] };
-    }
-
-    case 'JOIN_BOT': {
-      const newPlayer = getNewPlayerObj(getBotId(), action.botSettings);
-      return { ...state, players: [...state.players, newPlayer] };
     }
 
     case 'LEAVE':
@@ -135,26 +142,26 @@ export const reducer = (state: State = initialState, action: Action): State => {
       }
 
       const currentPlayerIdx = state.players.findIndex(
-        user => user.id === action.userId
+        (user) => user.id === action.userId
       );
 
       // Clone user
       const player = { ...state.players[currentPlayerIdx] };
 
-      if (difference(action.cardsHand, player.cardsHand).length) {
+      if (_.difference(action.cardsHand, player.cardsHand).length) {
         throw new Error('Card not in hand!');
       }
-      if (difference(action.cardsOpen, player.cardsOpen).length) {
+      if (_.difference(action.cardsOpen, player.cardsOpen).length) {
         throw new Error('Card not in open pile!');
       }
 
       // Swap cards
       player.cardsHand = [
-        ...difference(player.cardsHand, action.cardsHand),
+        ..._.difference(player.cardsHand, action.cardsHand),
         ...action.cardsOpen,
       ];
       player.cardsOpen = [
-        ...difference(player.cardsOpen, action.cardsOpen),
+        ..._.difference(player.cardsOpen, action.cardsOpen),
         ...action.cardsHand,
       ];
 
@@ -195,6 +202,10 @@ export const reducer = (state: State = initialState, action: Action): State => {
     }
 
     case 'PLAY': {
+      if (!action.userId) {
+        throw new Error('Missing userId!');
+      }
+
       // Clone player
       const player = { ...getPlayerById(action.userId, state.players) };
 
@@ -254,7 +265,9 @@ export const reducer = (state: State = initialState, action: Action): State => {
           const tablePile = [...state.tablePile, ...action.cards];
 
           // Remove blind card from closed cards
-          player.cardsClosed = player.cardsClosed.filter(c => c !== blindCard);
+          player.cardsClosed = player.cardsClosed.filter(
+            (c) => c !== blindCard
+          );
           player.turns = player.turns + 1;
 
           return {
@@ -286,9 +299,9 @@ export const reducer = (state: State = initialState, action: Action): State => {
         }
 
         // Cards can be removed from all piles
-        player.cardsHand = player.cardsHand.filter(c => c !== card);
-        player.cardsOpen = player.cardsOpen.filter(c => c !== card);
-        player.cardsClosed = player.cardsClosed.filter(c => c !== card);
+        player.cardsHand = player.cardsHand.filter((c) => c !== card);
+        player.cardsOpen = player.cardsOpen.filter((c) => c !== card);
+        player.cardsClosed = player.cardsClosed.filter((c) => c !== card);
       }
 
       const tableDeck = [...state.tableDeck];
@@ -312,7 +325,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
       const newPlayers = updatePlayers(state.players, player);
 
       // Check how many players are skipped by counting number of 8 cards played
-      const skipPlayers = action.cards.filter(c => getCardObj(c).rank === 8)
+      const skipPlayers = action.cards.filter((c) => getCardObj(c).rank === 8)
         .length;
 
       // Warn: pass new players data because (instead of players still in `state`)
@@ -327,7 +340,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
 
       // If only one player left
       let newGameState = state.state;
-      if (newPlayers.filter(player => !player.isFinished).length === 1) {
+      if (newPlayers.filter((player) => !player.isFinished).length === 1) {
         // A shithead has been crowned!
         newGameState = 'ended';
       } else if (shouldClearThePile(tablePile)) {
@@ -368,6 +381,10 @@ export const reducer = (state: State = initialState, action: Action): State => {
     }
 
     case 'PICK': {
+      if (!action.userId) {
+        throw new Error('Missing userId!');
+      }
+
       // If also picking own cards, they must be of the same rank!
       if (
         action.ownCards &&
@@ -391,11 +408,11 @@ export const reducer = (state: State = initialState, action: Action): State => {
 
       if (action.ownCards && action.ownCards.length) {
         // Filter cards already in hand (this could happen by accident, we just want to make sure)
-        action.ownCards = difference(action.ownCards, player.cardsHand);
+        action.ownCards = _.difference(action.ownCards, player.cardsHand);
 
         // Remove own cards from whatever pile
-        player.cardsOpen = difference(player.cardsOpen, action.ownCards);
-        player.cardsClosed = difference(player.cardsClosed, action.ownCards);
+        player.cardsOpen = _.difference(player.cardsOpen, action.ownCards);
+        player.cardsClosed = _.difference(player.cardsClosed, action.ownCards);
 
         // Add to cards in hand
         player.cardsHand = [...player.cardsHand, ...action.ownCards];
@@ -442,7 +459,7 @@ const getNextPlayer = (
   // Set iterator to current player
   iteratePlayers.set(currentPlayerIdx);
   // Move to next player that is still in the game
-  iteratePlayers.forward(player => !player.isFinished);
+  iteratePlayers.forward((player) => !player.isFinished);
 
   while (skip > 0) {
     const nextPlayer = iteratePlayers.next();
@@ -463,7 +480,7 @@ export const findStartingPlayer = (players: Player[]) => {
   let iterateSuits = getIterator(suits);
   let iterateRanks = getIterator(
     // Start from 4 (filter 2s and 3s)
-    [...ranks].filter(r => r > 3)
+    [...ranks].filter((r) => r > 3)
   );
 
   let startingPlayer: Player | undefined;
@@ -506,20 +523,20 @@ export const findStartingPlayer = (players: Player[]) => {
   };
 };
 
-const getNewPlayerObj = (
+const createPlayer = (
   id: string,
-
-  botSettings?: BotSettings
+  name: string,
+  socket: SocketIO.Socket
 ): Player => ({
   id,
-
+  name,
   cardsClosed: [],
   cardsHand: [],
   cardsOpen: [],
   isFinished: false,
   isDealer: false,
   turns: 0,
-  botSettings,
+  socket,
 });
 
 const calcCardCounts = (
@@ -570,8 +587,6 @@ const updatePlayers = (players: Player[], newPlayer: Player) => {
   newPlayers[idx] = { ...newPlayer };
   return newPlayers;
 };
-
-const getBotId = (): string => `bot_${++botId}`;
 
 const isPlayerFinished = (player: Player): boolean =>
   player.cardsClosed.length === 0 &&
