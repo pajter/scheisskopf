@@ -34,13 +34,21 @@ const boot = () => {
     pingInterval: 10000,
   });
 
-  io.on('connection', (socket) => {
-    new ScheissApp(socket);
+  const scheissApp = new ScheissApp(io);
+
+  // Serve index.html
+  expressApp.get('/', (_, res) => {
+    const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+
+    res.send(html);
   });
 
-  expressApp.get('/', function (_, res) {
-    const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
-    res.send(html);
+  expressApp.get('/api/rooms', (_, res) => {
+    res.json(scheissApp.storeRooms.map((storeRoom) => storeRoom.getState()));
+  });
+
+  expressApp.get('/api/users', (_, res) => {
+    res.json(scheissApp.users);
   });
 
   server.listen(3000, function () {

@@ -1,22 +1,10 @@
 import _ from 'lodash';
 
 import {
-  ranks,
-  suits,
   getCardObj,
   getIterator,
-  getCardId,
   areCardsTheSameRank,
-  getRankName,
 } from '../../../../_shared/util';
-import { CardId } from '../../../../_shared/types';
-
-import {
-  getDeck,
-  getIllegalMove,
-  shouldClearThePile,
-  getTotalTurns,
-} from '../../util';
 
 import {
   GameError,
@@ -27,8 +15,28 @@ import {
   GAME_ERROR_ILLEGAL_MOVE_BLIND,
   GAME_ERROR_ILLEGAL_MOVE,
   GAME_ERROR_USER_ALREADY_EXISTS as GAME_ERROR_PLAYER_ALREADY_EXISTS,
+  GAME_ERROR_ILLEGAL_MOVE_CARD_NOT_IN_HAND,
+  GAME_ERROR_ILLEGAL_MOVE_CARD_NOT_IN_OPEN_PILE,
+  GAME_ERROR_COULD_NOT_FIND_STARTING_PLAYER,
 } from './error';
-import { State, Action, Player } from './types';
+
+import { State, Action } from './types';
+
+import {
+  calcCardCounts,
+  createPlayer,
+  findStartingPlayer,
+  getNextPlayer,
+  findPlayerById,
+  isPlayerFinished,
+  sortPlayerCards,
+  updatePlayers,
+  getDeck,
+  getIllegalMoveCard,
+  shouldClearThePile,
+  getTotalTurns,
+  getErrorState,
+} from './util';
 
 export const initialState: State = {
   roomId: '$$EMPTY',
@@ -57,27 +65,30 @@ export const reducer = (
       if (!action.userId) {
         throw new Error('Missing userId!');
       }
-      if (!action.socket) {
-        throw new Error('Missing socket!');
+
+      const existingUser = findPlayerById(action.userId, state.players);
+      if (existingUser) {
+        return getErrorState(state, GAME_ERROR_PLAYER_ALREADY_EXISTS);
       }
 
-      if (state.players.find(({ id }) => id === action.userId)) {
-        return {
-          ...state,
-          error: new GameError(
-            'Player already exists.',
-            GAME_ERROR_PLAYER_ALREADY_EXISTS
-          ),
-        };
-      }
-      const newPlayer = createPlayer(action.userId, action.name, action.socket);
-      return { ...state, error: null, players: [...state.players, newPlayer] };
+      const newPlayer = createPlayer(action.userId, action.name);
+
+      return {
+        ...state,
+
+        error: null,
+
+        players: [...state.players, newPlayer],
+      };
     }
 
     case 'LEAVE':
       return {
         ...state,
-        players: state.players.filter(({ id }) => id !== action.userId),
+
+        error: null,
+
+        players: state.players.filter(({ userId }) => userId !== action.userId),
       };
 
     case 'DEAL': {
@@ -89,7 +100,7 @@ export const reducer = (
 
       // Set dealer
       newPlayers[
-        newPlayers.findIndex(({ id }) => id === action.userId)
+        newPlayers.findIndex(({ userId }) => userId === action.userId)
       ].isDealer = true;
 
       const iteratePlayers = getIterator(newPlayers);
@@ -119,40 +130,46 @@ export const reducer = (
       return {
         ...state,
 
+        error: null,
+
+        state: 'pre-game',
+
         startCardHandCount,
+
+        startingCard: null,
+
         tableDeck: deck,
         tableDiscarded: [],
         tablePile: [],
-        currentPlayerUserId: null,
-        error: null,
 
-        startingCard: null,
         players: newPlayers,
-        state: 'pre-game',
+        currentPlayerUserId: null,
       };
     }
 
     case 'SWAP': {
       if (action.cardsHand.length !== action.cardsOpen.length) {
-        return {
-          ...state,
-
-          error: new GameError('Swap must be fair!', GAME_ERROR_SWAP_UNFAIR),
-        };
+        return getErrorState(state, GAME_ERROR_SWAP_UNFAIR);
       }
 
       const currentPlayerIdx = state.players.findIndex(
-        (user) => user.id === action.userId
+        ({ userId }) => userId === action.userId
       );
 
       // Clone user
       const player = { ...state.players[currentPlayerIdx] };
 
+      // Check if card is in hand
       if (_.difference(action.cardsHand, player.cardsHand).length) {
-        throw new Error('Card not in hand!');
+        return getErrorState(state, GAME_ERROR_ILLEGAL_MOVE_CARD_NOT_IN_HAND);
       }
+
+      // Check if card is in open pile
       if (_.difference(action.cardsOpen, player.cardsOpen).length) {
-        throw new Error('Card not in open pile!');
+        return getErrorState(
+          state,
+          GAME_ERROR_ILLEGAL_MOVE_CARD_NOT_IN_OPEN_PILE
+        );
       }
 
       // Swap cards
@@ -170,7 +187,9 @@ export const reducer = (
 
       return {
         ...state,
+
         error: null,
+
         players: updatePlayers(state.players, player),
       };
     }
@@ -181,13 +200,15 @@ export const reducer = (
       );
 
       if (!startingPlayer) {
-        throw new Error('Could not find user with required card!?');
+        return getErrorState(state, GAME_ERROR_COULD_NOT_FIND_STARTING_PLAYER);
       }
 
       return {
         ...state,
 
-        currentPlayerUserId: startingPlayer.id,
+        error: null,
+
+        currentPlayerUserId: startingPlayer.userId,
 
         startingCard,
         state: 'playing',
@@ -197,6 +218,7 @@ export const reducer = (
     case 'PAUSE': {
       return {
         ...state,
+
         state: 'paused',
       };
     }
@@ -207,26 +229,18 @@ export const reducer = (
       }
 
       // Clone player
-      const player = { ...getPlayerById(action.userId, state.players) };
+      const player = { ...findPlayerById(action.userId, state.players) };
 
       if (action.cards.length === 0) {
-        return {
-          ...state,
-
-          error: new GameError('Play something!', GAME_ERROR_NO_CARDS_PLAYED),
-        };
+        return getErrorState(state, GAME_ERROR_NO_CARDS_PLAYED);
       }
 
       // Check that all cards are the same rank
       if (!areCardsTheSameRank(action.cards)) {
-        return {
-          ...state,
-
-          error: new GameError(
-            'Illegal move! Cards must have the same rank.',
-            GAME_ERROR_ILLEGAL_MOVE_CARD_RANKS_DONT_MATCH
-          ),
-        };
+        return getErrorState(
+          state,
+          GAME_ERROR_ILLEGAL_MOVE_CARD_RANKS_DONT_MATCH
+        );
       }
 
       // If start of game, the startingCard has to be played
@@ -234,14 +248,10 @@ export const reducer = (
         getTotalTurns(state.players) === 0 &&
         !action.cards.includes(state.startingCard!)
       ) {
-        return {
-          ...state,
-
-          error: new GameError(
-            'Illegal move! First card must include the starting card.',
-            GAME_ERROR_ILLEGAL_MOVE_FIRST_TURN_MUST_HAVE_STARTING_CARD
-          ),
-        };
+        return getErrorState(
+          state,
+          GAME_ERROR_ILLEGAL_MOVE_FIRST_TURN_MUST_HAVE_STARTING_CARD
+        );
       }
 
       // Playing blind card
@@ -258,9 +268,9 @@ export const reducer = (
           return state;
         }
 
-        const illegalMove = getIllegalMove(blindCard, state.tablePile);
+        const illegalMoveCard = getIllegalMoveCard(blindCard, state.tablePile);
 
-        if (illegalMove) {
+        if (illegalMoveCard) {
           // Add cards to pile
           const tablePile = [...state.tablePile, ...action.cards];
 
@@ -270,32 +280,30 @@ export const reducer = (
           );
           player.turns = player.turns + 1;
 
-          return {
-            ...state,
-            tablePile,
-            players: updatePlayers(state.players, player),
-
-            error: new GameError(
-              getIllegalMoveErrMessage(blindCard, illegalMove),
-              GAME_ERROR_ILLEGAL_MOVE_BLIND
-            ),
-          };
+          return getErrorState(
+            {
+              ...state,
+              tablePile,
+              players: updatePlayers(state.players, player),
+            },
+            new GameError(
+              GAME_ERROR_ILLEGAL_MOVE_BLIND,
+              blindCard,
+              illegalMoveCard
+            )
+          );
         }
       }
 
       // Remove cards from player
       for (const card of action.cards) {
         // Check if card can be played
-        const illegalMove = getIllegalMove(card, state.tablePile);
-        if (illegalMove) {
-          return {
-            ...state,
-
-            error: new GameError(
-              getIllegalMoveErrMessage(card, illegalMove),
-              GAME_ERROR_ILLEGAL_MOVE
-            ),
-          };
+        const illegalMoveCard = getIllegalMoveCard(card, state.tablePile);
+        if (illegalMoveCard) {
+          return getErrorState(
+            state,
+            new GameError(GAME_ERROR_ILLEGAL_MOVE, card, illegalMoveCard)
+          );
         }
 
         // Cards can be removed from all piles
@@ -330,7 +338,7 @@ export const reducer = (
 
       // Warn: pass new players data because (instead of players still in `state`)
       const nextPlayer = getNextPlayer(player, newPlayers, skipPlayers);
-      let nextPlayerUserId = nextPlayer.id;
+      let nextPlayerUserId = nextPlayer.userId;
 
       // Check for clear the deck
       let tableDiscarded = state.tableDiscarded;
@@ -350,20 +358,23 @@ export const reducer = (
 
         if (!player.isFinished) {
           // Keep same player when clearing the deck
-          nextPlayerUserId = player.id;
+          nextPlayerUserId = player.userId;
         }
       }
 
       // Successful turn
       return {
         ...state,
-        state: newGameState,
+
         error: null,
+
+        state: newGameState,
+
         tablePile,
         tableDeck,
         tableDiscarded,
-        players: newPlayers,
 
+        players: newPlayers,
         currentPlayerUserId: nextPlayerUserId,
       };
     }
@@ -374,7 +385,11 @@ export const reducer = (
 
       return {
         ...state,
+
+        error: null,
+
         state: 'playing',
+
         tablePile: [],
         tableDiscarded,
       };
@@ -391,17 +406,13 @@ export const reducer = (
         action.ownCards.length &&
         !areCardsTheSameRank(action.ownCards)
       ) {
-        return {
-          ...state,
-
-          error: new GameError(
-            'Illegal move! Cards must have the same rank.',
-            GAME_ERROR_ILLEGAL_MOVE_CARD_RANKS_DONT_MATCH
-          ),
-        };
+        return getErrorState(
+          state,
+          GAME_ERROR_ILLEGAL_MOVE_CARD_RANKS_DONT_MATCH
+        );
       }
 
-      const player = { ...getPlayerById(action.userId, state.players) };
+      const player = { ...findPlayerById(action.userId, state.players) };
 
       // Take the (shit)pile
       player.cardsHand = [...player.cardsHand, ...state.tablePile];
@@ -427,180 +438,16 @@ export const reducer = (
 
       return {
         ...state,
+
         error: null,
 
         tablePile: [],
+
         players: newPlayers,
-        currentPlayerUserId: nextPlayer.id,
+        currentPlayerUserId: nextPlayer.userId,
       };
     }
   }
+
   return state;
-};
-
-const getPlayerById = (playerId: string, players: Player[]): Player => {
-  const foundPlayer = players.find(({ id }) => id === playerId);
-  if (!foundPlayer) {
-    throw new Error('Could not find player!?');
-  }
-  return foundPlayer;
-};
-
-const getNextPlayer = (
-  currentPlayer: Player,
-  players: Player[],
-  skip: number = 0
-): Player => {
-  const currentPlayerIdx = players.findIndex(
-    ({ id }) => id === currentPlayer.id
-  );
-
-  const iteratePlayers = getIterator([...players]);
-  // Set iterator to current player
-  iteratePlayers.set(currentPlayerIdx);
-  // Move to next player that is still in the game
-  iteratePlayers.forward((player) => !player.isFinished);
-
-  while (skip > 0) {
-    const nextPlayer = iteratePlayers.next();
-    if (!nextPlayer.isFinished) {
-      // Decrease skip only for players that are in the game
-      skip--;
-    }
-  }
-
-  const nextPlayer = iteratePlayers.get();
-  if (!nextPlayer) {
-    throw new Error('Could not find next player!?');
-  }
-  return nextPlayer;
-};
-
-export const findStartingPlayer = (players: Player[]) => {
-  let iterateSuits = getIterator(suits);
-  let iterateRanks = getIterator(
-    // Start from 4 (filter 2s and 3s)
-    [...ranks].filter((r) => r > 3)
-  );
-
-  let startingPlayer: Player | undefined;
-
-  while (!startingPlayer) {
-    for (const player of players) {
-      // Note: discuss whether or not it's allowed to have a club 4 in open cards
-
-      // Search in hand only
-      if (
-        player.cardsHand.includes(
-          getCardId({ suit: iterateSuits.get(), rank: iterateRanks.get() })
-        )
-      ) {
-        startingPlayer = player;
-
-        // Break users loop
-        break;
-      }
-    }
-
-    if (startingPlayer) {
-      break;
-    }
-
-    // If we haven't found it after scanning all users, move on to the next card
-    iterateSuits.next();
-    if (iterateSuits.curIdx === 0) {
-      // Move on to next rank if we restart the suits loop
-      iterateRanks.next();
-    }
-  }
-
-  return {
-    startingPlayer,
-    startingCard: getCardId({
-      suit: iterateSuits.get(),
-      rank: iterateRanks.get(),
-    }),
-  };
-};
-
-const createPlayer = (
-  id: string,
-  name: string,
-  socket: SocketIO.Socket
-): Player => ({
-  id,
-  name,
-  cardsClosed: [],
-  cardsHand: [],
-  cardsOpen: [],
-  isFinished: false,
-  isDealer: false,
-  turns: 0,
-  socket,
-});
-
-const calcCardCounts = (
-  playerCount: number
-): { closed: number; open: number; hand: number } => {
-  // Start at 3 for each
-  let closed = 3;
-  let open = 3;
-  let hand = 3;
-
-  // Min amount of cards
-  const closedMin = 2;
-  const openMin = 1;
-  const handMin = 1;
-
-  const cardsPerPlayer = 52 / playerCount;
-
-  // While the amount of cards we want to deal is greater than the cards available per player
-  while (closed + open + hand > Math.floor(cardsPerPlayer)) {
-    // Subtract cards from hand first
-    if (hand > handMin) {
-      hand--;
-      continue;
-    }
-
-    // Subtract open cards
-    if (open > openMin) {
-      open--;
-      continue;
-    }
-
-    // Subtract closed cards
-    if (closed > closedMin) {
-      closed--;
-      continue;
-    }
-  }
-
-  return { closed, open, hand };
-};
-
-const updatePlayers = (players: Player[], newPlayer: Player) => {
-  const idx = players.findIndex(({ id }) => id === newPlayer.id);
-  if (idx < 0) {
-    throw new Error('Could not find player?!');
-  }
-  const newPlayers = [...players];
-  newPlayers[idx] = { ...newPlayer };
-  return newPlayers;
-};
-
-const isPlayerFinished = (player: Player): boolean =>
-  player.cardsClosed.length === 0 &&
-  player.cardsOpen.length === 0 &&
-  player.cardsHand.length === 0;
-
-const sortPlayerCards = (player: Player): void => {
-  // Only sort hand and open cards
-  player.cardsHand = player.cardsHand.sort();
-  player.cardsOpen = player.cardsOpen.sort();
-};
-
-const getIllegalMoveErrMessage = (card: CardId, illegalCard: CardId) => {
-  return `Illegal move! Can not play a ${getRankName(
-    getCardObj(card).rank
-  )} on a ${getRankName(getCardObj(illegalCard).rank)}.`;
 };

@@ -2,7 +2,6 @@ import { Store as ReduxStore } from 'redux';
 import { CardId } from '../../../../_shared/types';
 
 import { GameError } from './error';
-import { Socket } from 'socket.io';
 
 export interface State {
   roomId: string;
@@ -61,7 +60,6 @@ export type Action =
       type: 'JOIN';
       name: string;
       roomId?: string;
-      socket?: SocketIO.Socket;
     }
   | {
       type: 'LEAVE';
@@ -98,7 +96,7 @@ export type Action =
 export type Store = ReduxStore<State, Action>;
 
 export interface Player {
-  id: string;
+  userId: string;
   name: string;
   cardsOpen: CardId[];
   cardsClosed: CardId[];
@@ -106,7 +104,6 @@ export interface Player {
   isFinished: boolean;
   isDealer: boolean;
   turns: number;
-  socket: SocketIO.Socket;
 }
 
 export interface BotPlayer extends Player {
