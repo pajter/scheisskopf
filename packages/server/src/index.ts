@@ -36,12 +36,35 @@ const boot = () => {
 
   const scheissApp = new ScheissApp(io);
 
+  // Auth middleware
+  expressApp.use((req, res, next) => {
+    const auth = { login: 'admin', password: 'admin' };
+
+    // Parse login and password from headers
+    const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
+    const [login, password] = Buffer.from(b64auth, 'base64')
+      .toString()
+      .split(':');
+
+    // Verify login and password are set and correct
+    if (login === auth.login && password === auth.password) {
+      // Access granted...
+      return next();
+    }
+
+    // Access denied...
+    res.set('WWW-Authenticate', 'Basic realm="Scheisskopf"');
+    res.status(401).send('Authentication required.');
+  });
+
   // Serve index.html
   expressApp.get('/', (_, res) => {
     const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
 
     res.send(html);
   });
+
+  expressApp.use('/static', express.static(path.join(__dirname, 'static')));
 
   expressApp.get('/api/rooms', (_, res) => {
     res.json(scheissApp.storeRooms.map((storeRoom) => storeRoom.getState()));

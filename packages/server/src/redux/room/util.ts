@@ -23,12 +23,11 @@ export const createPlayer = (id: string, name: string): Player => ({
   turns: 0,
 });
 
-export const findPlayerById = (playerId: string, players: Player[]): Player => {
-  const foundPlayer = players.find(({ userId: id }) => id === playerId);
-  if (!foundPlayer) {
-    throw new Error('Could not find player!?');
-  }
-  return foundPlayer;
+export const findPlayerById = (
+  playerId: string,
+  players: Player[]
+): Player | undefined => {
+  return players.find(({ userId }) => userId === playerId);
 };
 
 export const getNextPlayer = (
@@ -148,7 +147,8 @@ export const calcCardCounts = (
 };
 
 export const updatePlayers = (players: Player[], newPlayer: Player) => {
-  const idx = players.findIndex(({ userId: id }) => id === newPlayer.userId);
+  console.log(players, newPlayer);
+  const idx = players.findIndex(({ userId }) => userId === newPlayer.userId);
   if (idx < 0) {
     throw new Error('Could not find player?!');
   }

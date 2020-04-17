@@ -1,8 +1,8 @@
-import { generateRandomString } from '../../_shared/util';
+import { generateRandomString } from '../../../_shared/util';
 
-import { State as StateRoomClient } from '../../client/src/redux/room/types';
-import { Store as StoreRoom } from './redux/room/types';
-import { getStore as getStoreRoom } from './redux/room/store';
+import { State as StateRoomClient } from '../../../client/src/redux/room/types';
+import { Store as StoreRoom } from '../redux/room/types';
+import { getStore as getStoreRoom } from '../redux/room/store';
 
 import { ScheissUser } from './user';
 

@@ -1,6 +1,6 @@
-import { Action as ActionRoom, Store as StoreRoom } from './redux/room/types';
+import { Action as ActionRoom, Store as StoreRoom } from '../redux/room/types';
 
-import { ScheissApp } from './app';
+import { ScheissApp } from './index';
 
 export interface User {
   id: string;
@@ -54,6 +54,7 @@ export class ScheissUser {
       );
     }
 
+    console.log('Dispatching', action);
     this._roomCache.dispatch(action);
 
     this.app.syncRoom(this._roomCache.getState().roomId);
