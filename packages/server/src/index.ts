@@ -15,7 +15,7 @@ declare global {
 
 Object.defineProperty(console, 'logObject', {
   value: (obj: object) =>
-    console.log(util.inspect(obj, false, 10, true /* enable colors */)),
+    console.info(util.inspect(obj, false, 10, true /* enable colors */)),
 });
 
 ////////////////////////////

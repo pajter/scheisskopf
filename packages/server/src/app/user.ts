@@ -1,27 +1,24 @@
-import { Action as ActionRoom, Store as StoreRoom } from '../redux/room/types';
+import { Action as ActionRoom } from '../redux/room/types';
 
-import { ScheissApp } from './index';
-
-export interface User {
-  id: string;
-  ip: string;
-}
+import {
+  createRoom,
+  findRoomForId,
+  syncRoom,
+  removeUser,
+  findRoomForUserId,
+} from './index';
 
 export class ScheissUser {
-  app: ScheissApp;
   socket: SocketIO.Socket;
   userId: string;
 
-  private _roomCache?: StoreRoom;
-
-  constructor(socket: SocketIO.Socket, app: ScheissApp) {
+  constructor(socket: SocketIO.Socket) {
     this.socket = socket;
-    this.app = app;
 
     // TODO: user id from socket?
     this.userId = socket.id;
 
-    console.log('Connection from', this.socket.id);
+    console.info('Connection from', this.socket.id);
 
     // Listen for room actions
     socket.on('actionRoom', (action) =>
@@ -32,56 +29,49 @@ export class ScheissUser {
     socket.on('disconnect', this.handleDisconnect);
   }
 
-  handleActionRoom = (action: ActionRoom & { userId: string }) => {
-    console.log('actionRoom');
-    console.logObject(action);
+  private handleActionRoom = (action: ActionRoom & { userId: string }) => {
+    console.debug('actionRoom', this.userId);
 
-    // Create room in server store first
+    // Find existing room for this user
+    let room = findRoomForUserId(this.userId);
     if (action.type === 'JOIN') {
       if (!action.roomId) {
-        console.log('CREATE_ROOM');
+        console.debug('CREATE_ROOM');
 
-        this._roomCache = this.app.createRoom();
+        // Create room in server store first
+        room = createRoom();
+
+        // Set new roomId on action
+        action.roomId = room.getState().roomId;
       } else {
-        // Find existing room
-        this._roomCache = this.app.findRoomForId(action.roomId);
+        // Find room by ID
+        // TODO: error handling to signal to a user if a room doesn't exist
+        room = findRoomForId(action.roomId);
       }
     }
 
-    if (!this._roomCache) {
-      throw new Error(
-        "Room cache is undefined. This wasn't supposed to happen."
-      );
+    if (!room) {
+      throw new Error("Room is undefined. This wasn't supposed to happen.");
     }
 
-    console.log('Dispatching', action);
-    this._roomCache.dispatch(action);
+    console.debug('Dispatching', action);
+    room.dispatch(action);
 
-    this.app.syncRoom(this._roomCache.getState().roomId);
+    syncRoom(room.getState().roomId, this.userId);
   };
 
-  handleDisconnect = (reason: any) => {
-    console.log('Disconnection from', this.socket.id, reason);
+  private handleDisconnect = (reason: any) => {
+    console.debug('Disconnection from', this.socket.id, reason);
 
     // TODO: AFK/reconnect handling
 
-    const room = this.getRoom();
+    const room = findRoomForUserId(this.userId);
     if (!room) {
       return;
     }
 
     room.dispatch({ type: 'LEAVE', userId: this.userId });
 
-    this.app.removeUser(this.userId);
+    removeUser(this.userId);
   };
-
-  private getRoom() {
-    if (this._roomCache) {
-      return this._roomCache;
-    }
-
-    this._roomCache = this.app.findRoomForUserId(this.userId);
-
-    return this._roomCache;
-  }
 }

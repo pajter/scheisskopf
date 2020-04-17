@@ -27,7 +27,11 @@ export const findPlayerById = (
   playerId: string,
   players: Player[]
 ): Player | undefined => {
-  return players.find(({ userId }) => userId === playerId);
+  const player = players.find(({ userId }) => userId === playerId);
+  if (player) {
+    // Always return copy
+    return { ...player };
+  }
 };
 
 export const getNextPlayer = (
@@ -57,7 +61,7 @@ export const getNextPlayer = (
   if (!nextPlayer) {
     throw new Error('Could not find next player!?');
   }
-  return nextPlayer;
+  return { ...nextPlayer };
 };
 
 export const findStartingPlayer = (players: Player[]) => {
@@ -99,7 +103,7 @@ export const findStartingPlayer = (players: Player[]) => {
   }
 
   return {
-    startingPlayer,
+    startingPlayer: { ...startingPlayer },
     startingCard: getCardId({
       suit: iterateSuits.get(),
       rank: iterateRanks.get(),
@@ -147,7 +151,6 @@ export const calcCardCounts = (
 };
 
 export const updatePlayers = (players: Player[], newPlayer: Player) => {
-  console.log(players, newPlayer);
   const idx = players.findIndex(({ userId }) => userId === newPlayer.userId);
   if (idx < 0) {
     throw new Error('Could not find player?!');

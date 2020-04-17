@@ -73,12 +73,14 @@ export const reducer = (
 
       const newPlayer = createPlayer(action.userId, action.name);
 
+      const newPlayers = [...state.players, newPlayer];
+
       return {
         ...state,
 
         error: null,
 
-        players: [...state.players, newPlayer],
+        players: newPlayers,
       };
     }
 
@@ -229,7 +231,10 @@ export const reducer = (
       }
 
       // Clone player
-      const player = { ...findPlayerById(action.userId, state.players) };
+      let player = findPlayerById(action.userId, state.players);
+      if (!player) {
+        return state;
+      }
 
       if (action.cards.length === 0) {
         return getErrorState(state, GAME_ERROR_NO_CARDS_PLAYED);
@@ -412,7 +417,10 @@ export const reducer = (
         );
       }
 
-      const player = { ...findPlayerById(action.userId, state.players) };
+      const player = findPlayerById(action.userId, state.players);
+      if (!player) {
+        return state;
+      }
 
       // Take the (shit)pile
       player.cardsHand = [...player.cardsHand, ...state.tablePile];

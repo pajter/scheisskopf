@@ -101,26 +101,52 @@ export function HomeRoute() {
         </div>
       </div>
       <div>
-        {stateRoom.players.map((player, idx) => {
+        <h2>You: {stateRoom.player.name}</h2>
+        <code>{stateRoom.player.userId}</code>
+
+        <div>
+          <b>card closed</b>
+          <code>{stateRoom.player.cardsClosedCount}</code>
+        </div>
+
+        <div>
+          <b>cards open</b>
+          {stateRoom.player.cardsOpen.map((cardId) => (
+            <CardIcon cardId={cardId} />
+          ))}
+        </div>
+
+        <div>
+          <b>cards hand</b>
+          {stateRoom.player.cardsHand.map((cardId) => (
+            <CardIcon cardId={cardId} />
+          ))}
+        </div>
+      </div>
+      <div>
+        <h2>Players</h2>
+
+        {stateRoom.otherPlayers.map((otherPlayer, idx) => {
           return (
             <div key={idx}>
-              <h3>{player.name}</h3>
+              <h3>{otherPlayer.name}</h3>
+              <code>{otherPlayer.userId}</code>
 
               <div>
                 <b>card closed</b>
-                <code>{player.cardsClosedCount}</code>
+                <code>{otherPlayer.cardsClosedCount}</code>
               </div>
 
               <div>
                 <b>cards open</b>
-                {player.cardsOpen.map((cardId) => (
+                {otherPlayer.cardsOpen.map((cardId) => (
                   <CardIcon cardId={cardId} />
                 ))}
               </div>
 
               <div>
                 <b>cards hand</b>
-                <code>{player.cardsHandCount}</code>
+                <code>{otherPlayer.cardsHandCount}</code>
               </div>
             </div>
           );

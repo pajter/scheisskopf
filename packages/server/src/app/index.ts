@@ -1,111 +1,146 @@
 import { generateRandomString } from '../../../_shared/util';
 
-import { State as StateRoomClient } from '../../../client/src/redux/room/types';
-import { Store as StoreRoom } from '../redux/room/types';
+import {
+  State as StateRoomClient,
+  Player,
+  PlayerOther,
+  PlayerBase,
+} from '../../../client/src/redux/room/types';
+import {
+  Store as StoreRoom,
+  Player as RoomPlayer,
+  State as RoomState,
+} from '../redux/room/types';
 import { getStore as getStoreRoom } from '../redux/room/store';
 
 import { ScheissUser } from './user';
+import { findPlayerById } from '../redux/room/util';
 
 export interface User {
   id: string;
   ip: string;
 }
 
-export class ScheissApp {
-  users: ScheissUser[] = [];
+let storeRooms: StoreRoom[] = [];
+let users: ScheissUser[] = [];
 
-  storeRooms: StoreRoom[] = [];
+const createUniqueRoomId = (): string => {
+  let newRoomId = generateRandomString(4);
+  const roomIds = storeRooms.map((storeRoom) => storeRoom.getState().roomId);
+  while (roomIds.includes(newRoomId)) {
+    newRoomId = generateRandomString(4);
+  }
+  return newRoomId;
+};
 
-  constructor(io: SocketIO.Server) {
-    io.on('connection', (socket) => {
-      this.addUser(new ScheissUser(socket, this));
-    });
+const getPlayerBase = (player: RoomPlayer): PlayerBase => ({
+  userId: player.userId,
+  name: player.name,
+  cardsClosedCount: player.cardsClosed.length,
+
+  cardsOpen: player.cardsOpen,
+});
+
+const getPlayer = (player: RoomPlayer): Player => ({
+  ...getPlayerBase(player),
+  cardsHand: player.cardsHand,
+});
+
+const getOtherPlayer = (player: RoomPlayer): PlayerOther => ({
+  ...getPlayerBase(player),
+  cardsHandCount: player.cardsHand.length,
+});
+
+/**
+ * Sanitize server state to 'anonimize' state for client
+ *
+ */
+const getRoomStateForPlayer = (
+  roomState: RoomState,
+  player: RoomPlayer
+): StateRoomClient => {
+  const otherPlayers = roomState.players.filter(
+    ({ userId }) => userId !== player.userId
+  );
+
+  return {
+    state: roomState.state,
+    currentPlayerUserId: roomState.currentPlayerUserId,
+    player: getPlayer(player),
+    otherPlayers: otherPlayers.map(getOtherPlayer),
+    cardsDeckCount: roomState.tableDeck.length,
+    cardsDiscardedCount: roomState.tableDiscarded.length,
+    cardsPile: roomState.tablePile,
+    error: null,
+    roomId: roomState.roomId,
+  };
+};
+
+export const findRoomForUserId = (userId: string) => {
+  // Find room where user is located by searching all rooms
+  return storeRooms.find((store) => {
+    return !!store
+      .getState()
+      .players.find((player) => player.userId === userId);
+  });
+};
+
+export const findRoomForId = (roomId: string) => {
+  return storeRooms.find((store) => store.getState().roomId === roomId);
+};
+
+export const removeUser = (id: string) => {
+  users = users.filter((user) => user.userId !== id);
+};
+
+export const addUser = (user: ScheissUser) => {
+  users.push(user);
+};
+
+export const addRoom = (room: StoreRoom) => {
+  storeRooms.push(room);
+};
+
+export const removeRoom = (roomId: string) => {
+  storeRooms = storeRooms.filter(
+    (storeRoom) => storeRoom.getState().roomId !== roomId
+  );
+};
+
+export const createRoom = () => {
+  const room = getStoreRoom({
+    roomId: createUniqueRoomId(),
+  });
+  addRoom(room);
+  return room;
+};
+
+export const syncRoom = (roomId: string, playerId: string) => {
+  const room = findRoomForId(roomId);
+  if (!room) {
+    throw new Error('Room could not by synced. Room ID not found?');
   }
 
-  createRoom = () => {
-    const room = getStoreRoom({
-      roomId: this.createUniqueRoomId(),
-    });
-    this.addRoom(room);
-    return room;
-  };
+  const roomState = room.getState();
 
-  findRoomForUserId = (userId: string) => {
-    // Find room where user is located by searching all rooms
-    return this.storeRooms.find((store) =>
-      store.getState().players.find((player) => player.userId === userId)
-    );
-  };
+  const player = findPlayerById(playerId, roomState.players);
+  if (!player) {
+    throw new Error('Can not find player who is syncing the room...?');
+  }
 
-  findRoomForId = (roomId: string) => {
-    return this.storeRooms.find((store) => store.getState().roomId === roomId);
-  };
-
-  removeUser = (id: string) => {
-    this.users = this.users.filter((user) => user.userId !== id);
-  };
-
-  syncRoom = (roomId: string) => {
-    const room = this.findRoomForId(roomId);
-    if (!room) {
-      throw new Error('Room could not by synced. Room ID not found?');
+  // Sync new state to all users in room
+  roomState.players.forEach((player) => {
+    const user = users.find((u) => u.userId === player.userId);
+    if (user) {
+      user.socket.emit('syncRoom', getRoomStateForPlayer(roomState, player));
     }
+  });
+};
 
-    const roomState = room.getState();
-
-    // Sanitize server state to 'anonimize' state for client
-    const state: StateRoomClient = {
-      state: roomState.state,
-      currentPlayerUserId: roomState.currentPlayerUserId,
-      players: roomState.players.map((player) => {
-        return {
-          name: player.name,
-          cardsClosedCount: player.cardsClosed.length,
-          cardsHandCount: player.cardsHand.length,
-          cardsOpen: player.cardsOpen,
-        };
-      }),
-      cardsDeckCount: roomState.tableDeck.length,
-      cardsDiscardedCount: roomState.tableDiscarded.length,
-      cardsPile: roomState.tablePile,
-      error: null,
-      roomId: roomState.roomId,
-    };
-
-    // Get all users in room
-    const roomUserIds = roomState.players.map((p) => p.userId);
-    const users = this.users.filter((user) =>
-      roomUserIds.includes(user.userId)
-    );
-
-    // Sync new state to all users in room
-    users.forEach((user) => {
-      user.socket.emit('syncRoom', state);
+export class ScheissApp {
+  constructor(io: SocketIO.Server) {
+    io.on('connection', (socket) => {
+      addUser(new ScheissUser(socket));
     });
-  };
-
-  private addUser = (user: ScheissUser) => {
-    this.users.push(user);
-  };
-
-  private addRoom = (room: StoreRoom) => {
-    this.storeRooms.push(room);
-  };
-
-  // private removeRoom = (roomId: string) => {
-  //   this.storeRooms = this.storeRooms.filter(
-  //     (storeRoom) => storeRoom.getState().roomId !== roomId
-  //   );
-  // };
-
-  private createUniqueRoomId = (): string => {
-    let newRoomId = generateRandomString(4);
-    const roomIds = this.storeRooms.map(
-      (storeRoom) => storeRoom.getState().roomId
-    );
-    while (roomIds.includes(newRoomId)) {
-      newRoomId = generateRandomString(4);
-    }
-    return newRoomId;
-  };
+  }
 }

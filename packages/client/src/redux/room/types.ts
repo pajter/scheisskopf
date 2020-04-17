@@ -3,7 +3,8 @@ import { CardId } from '../../../../_shared/types';
 
 export interface State {
   currentPlayerUserId: string | null;
-  players: Player[];
+  player: Player;
+  otherPlayers: PlayerOther[];
   cardsDeckCount: number;
   cardsDiscardedCount: number;
   cardsPile: CardId[];
@@ -22,9 +23,17 @@ export type Action = { type: 'RESET' } | { type: 'SYNC'; state: State };
 
 export type Store = _Store<State, Action>;
 
-export interface Player {
+export interface PlayerBase {
+  userId: string;
   name: string;
   cardsOpen: CardId[];
   cardsClosedCount: number;
+}
+
+export interface PlayerOther extends PlayerBase {
   cardsHandCount: number;
+}
+
+export interface Player extends PlayerBase {
+  cardsHand: CardId[];
 }
