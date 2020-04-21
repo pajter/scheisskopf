@@ -38,6 +38,8 @@ export interface State {
 
   players: Player[];
 
+  spectactors: Spectator[];
+
   state:
     | 'pre-deal'
     | 'pre-game'
@@ -63,6 +65,9 @@ export type Action =
     }
   | {
       type: 'LEAVE';
+    }
+  | {
+      type: 'USER_DISCONNECT';
     }
   | {
       type: 'DEAL';
@@ -95,9 +100,14 @@ export type Action =
 
 export type Store = ReduxStore<State, Action>;
 
-export interface Player {
+interface UserBase {
   userId: string;
   name: string;
+  connected: boolean;
+  lastPing: Date;
+}
+
+export interface Player extends UserBase {
   cardsOpen: CardId[];
   cardsClosed: CardId[];
   cardsHand: CardId[];
@@ -105,6 +115,8 @@ export interface Player {
   isDealer: boolean;
   turns: number;
 }
+
+export interface Spectator extends UserBase {}
 
 export interface BotPlayer extends Player {
   botSettings: BotSettings;

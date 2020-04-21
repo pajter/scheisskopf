@@ -1,22 +1,12 @@
 import fs from 'fs';
 import path from 'path';
-import util from 'util';
+
 import { createServer } from 'https';
 import express from 'express';
 import socketIo from 'socket.io';
 
+import './console';
 import { ScheissApp } from './app';
-
-declare global {
-  interface Console {
-    logObject: (obj: object) => void;
-  }
-}
-
-Object.defineProperty(console, 'logObject', {
-  value: (obj: object) =>
-    console.info(util.inspect(obj, false, 10, true /* enable colors */)),
-});
 
 ////////////////////////////
 
@@ -65,14 +55,6 @@ const boot = () => {
   });
 
   expressApp.use('/static', express.static(path.join(__dirname, 'static')));
-
-  expressApp.get('/api/rooms', (_, res) => {
-    res.json(scheissApp.storeRooms.map((storeRoom) => storeRoom.getState()));
-  });
-
-  expressApp.get('/api/users', (_, res) => {
-    res.json(scheissApp.users);
-  });
 
   server.listen(3000, function () {
     console.info('Listening on *:3000');

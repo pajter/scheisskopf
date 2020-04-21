@@ -9,11 +9,11 @@ import {
 } from '../../../../_shared/util';
 import { CardId } from '../../../../_shared/types';
 
-import { Player, State } from './types';
+import { Player, State, Spectator } from './types';
 import { GameErrorCode, GameError } from './error';
 
-export const createPlayer = (id: string, name: string): Player => ({
-  userId: id,
+export const createPlayer = (userId: string, name: string): Player => ({
+  userId,
   name,
   cardsClosed: [],
   cardsHand: [],
@@ -21,6 +21,15 @@ export const createPlayer = (id: string, name: string): Player => ({
   isFinished: false,
   isDealer: false,
   turns: 0,
+  connected: true,
+  lastPing: new Date(),
+});
+
+export const createSpectator = (userId: string, name: string): Spectator => ({
+  userId,
+  name,
+  connected: true,
+  lastPing: new Date(),
 });
 
 export const findPlayerById = (
@@ -150,14 +159,25 @@ export const calcCardCounts = (
   return { closed, open, hand };
 };
 
-export const updatePlayers = (players: Player[], newPlayer: Player) => {
-  const idx = players.findIndex(({ userId }) => userId === newPlayer.userId);
+export const updatePlayers = (
+  players: Player[],
+  newPlayer: Player | ((player: Player) => Player),
+  userId?: string
+) => {
+  userId = typeof newPlayer === 'function' ? userId : newPlayer.userId;
+
+  const idx = players.findIndex((p) => p.userId === userId);
   if (idx < 0) {
     throw new Error('Could not find player?!');
   }
-  const newPlayers = [...players];
-  newPlayers[idx] = { ...newPlayer };
-  return newPlayers;
+
+  const playersCopy = [...players];
+
+  playersCopy[idx] = {
+    ...(typeof newPlayer === 'function' ? newPlayer(players[idx]) : newPlayer),
+  };
+
+  return playersCopy;
 };
 
 export const isPlayerFinished = (player: Player): boolean =>
@@ -235,16 +255,16 @@ export const shouldClearThePile = (cards: string[]) => {
 };
 
 export const getIllegalMoveCard = (
-  playingCard: CardId,
-  cards?: CardId[]
+  testCard: CardId,
+  cardsPile?: CardId[]
 ): CardId | undefined => {
   // Can always play an empty pile
-  if (typeof cards === 'undefined' || !cards.length) {
+  if (typeof cardsPile === 'undefined' || !cardsPile.length) {
     return;
   }
 
   // Special cards
-  const playingCardObj = getCardObj(playingCard);
+  const playingCardObj = getCardObj(testCard);
   if (
     playingCardObj.rank === 2 ||
     playingCardObj.rank === 3 ||
@@ -254,7 +274,7 @@ export const getIllegalMoveCard = (
   }
 
   // If we have a '3', move up the pile until there's no longer a 3
-  const cardsCopy = [...cards];
+  const cardsCopy = [...cardsPile];
   let currentCardObj = getCardObj(cardsCopy.pop()!);
   while (currentCardObj.rank === 3 && cardsCopy.length) {
     currentCardObj = getCardObj(cardsCopy.pop()!);
@@ -275,4 +295,31 @@ export const getIllegalMoveCard = (
   return playingCardObj.rank >= currentCardObj.rank
     ? undefined
     : getCardId(currentCardObj);
+};
+
+export const mustPlayerPick = (
+  player: Player,
+  cardsPile: CardId[]
+): boolean => {
+  // Player must first play from hand before playing from open
+  const playingPile = player.cardsHand.length
+    ? player.cardsHand
+    : player.cardsOpen.length
+    ? player.cardsOpen
+    : [];
+
+  if (!playingPile.length) {
+    // Player does not need to pick if there are no cards
+    return false;
+  }
+
+  for (const cardId of playingPile) {
+    if (!getIllegalMoveCard(cardId, cardsPile)) {
+      // If a legal move is found, player does NOT have to pick
+      return false;
+    }
+  }
+
+  // If no legal moves were found in the players' playing pile, player has to pick
+  return true;
 };

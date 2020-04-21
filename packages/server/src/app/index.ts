@@ -5,6 +5,7 @@ import {
   Player,
   PlayerOther,
   PlayerBase,
+  MandatoryAction,
 } from '../../../client/src/redux/room/types';
 import {
   Store as StoreRoom,
@@ -14,7 +15,7 @@ import {
 import { getStore as getStoreRoom } from '../redux/room/store';
 
 import { ScheissUser } from './user';
-import { findPlayerById } from '../redux/room/util';
+import { findPlayerById, mustPlayerPick } from '../redux/room/util';
 
 export interface User {
   id: string;
@@ -33,23 +34,49 @@ const createUniqueRoomId = (): string => {
   return newRoomId;
 };
 
-const getPlayerBase = (player: RoomPlayer): PlayerBase => ({
-  userId: player.userId,
-  name: player.name,
-  cardsClosedCount: player.cardsClosed.length,
+const getRoomStatePlayerBase = (
+  player: RoomPlayer,
+  roomState: RoomState
+): PlayerBase => {
+  let mandatoryAction: MandatoryAction | undefined = undefined;
+  if (mustPlayerPick(player, roomState.tablePile)) {
+    mandatoryAction = 'pick';
+  }
 
-  cardsOpen: player.cardsOpen,
-});
+  return {
+    userId: player.userId,
+    name: player.name,
 
-const getPlayer = (player: RoomPlayer): Player => ({
-  ...getPlayerBase(player),
-  cardsHand: player.cardsHand,
-});
+    cardsClosedCount: player.cardsClosed.length,
 
-const getOtherPlayer = (player: RoomPlayer): PlayerOther => ({
-  ...getPlayerBase(player),
-  cardsHandCount: player.cardsHand.length,
-});
+    // Open cards are always public
+    cardsOpen: player.cardsOpen,
+
+    mandatoryAction,
+  };
+};
+
+const getRoomStatePlayer = (
+  player: RoomPlayer,
+  roomState: RoomState
+): Player => {
+  return {
+    ...getRoomStatePlayerBase(player, roomState),
+
+    cardsHand: player.cardsHand,
+  };
+};
+
+const getRoomStateOtherPlayer = (
+  player: RoomPlayer,
+  roomState: RoomState
+): PlayerOther => {
+  return {
+    ...getRoomStatePlayerBase(player, roomState),
+
+    cardsHandCount: player.cardsHand.length,
+  };
+};
 
 /**
  * Sanitize server state to 'anonimize' state for client
@@ -66,12 +93,14 @@ const getRoomStateForPlayer = (
   return {
     state: roomState.state,
     currentPlayerUserId: roomState.currentPlayerUserId,
-    player: getPlayer(player),
-    otherPlayers: otherPlayers.map(getOtherPlayer),
+    player: getRoomStatePlayer(player, roomState),
+    otherPlayers: otherPlayers.map((p) =>
+      getRoomStateOtherPlayer(p, roomState)
+    ),
     cardsDeckCount: roomState.tableDeck.length,
     cardsDiscardedCount: roomState.tableDiscarded.length,
     cardsPile: roomState.tablePile,
-    error: null,
+    error: roomState.error,
     roomId: roomState.roomId,
   };
 };
@@ -131,7 +160,9 @@ export const syncRoom = (roomId: string, playerId: string) => {
   // Sync new state to all users in room
   roomState.players.forEach((player) => {
     const user = users.find((u) => u.userId === player.userId);
+
     if (user) {
+      console.logDebug('SYNC_ROOM', user.userId);
       user.socket.emit('syncRoom', getRoomStateForPlayer(roomState, player));
     }
   });

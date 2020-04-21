@@ -23,11 +23,14 @@ export type Action = { type: 'RESET' } | { type: 'SYNC'; state: State };
 
 export type Store = _Store<State, Action>;
 
+export type MandatoryAction = 'pick';
+
 export interface PlayerBase {
   userId: string;
   name: string;
   cardsOpen: CardId[];
   cardsClosedCount: number;
+  mandatoryAction?: MandatoryAction;
 }
 
 export interface PlayerOther extends PlayerBase {

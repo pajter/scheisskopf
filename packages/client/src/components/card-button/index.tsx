@@ -4,10 +4,18 @@ import { CardId } from '../../../../_shared/types';
 
 import { CardIcon } from '../card-icon';
 
-export function CardButton({ cardId }: { cardId?: CardId }) {
+export function CardButton({
+  cardId,
+  onClick,
+  disabled,
+}: {
+  cardId?: CardId;
+  onClick?: () => void;
+  disabled?: boolean;
+}) {
   return (
-    <div className="card-button">
+    <button className="card-button" onClick={onClick} disabled={disabled}>
       <CardIcon cardId={cardId} />
-    </div>
+    </button>
   );
 }

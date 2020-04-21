@@ -36,25 +36,31 @@ import {
   shouldClearThePile,
   getTotalTurns,
   getErrorState,
+  createSpectator,
 } from './util';
 
 export const initialState: State = {
   roomId: '$$EMPTY',
+
   tablePile: [],
   tableDeck: [],
   tableDiscarded: [],
+
   players: [],
+  spectactors: [],
 
   currentPlayerUserId: null,
   startCardHandCount: null,
-  state: 'pre-deal',
-  error: null,
   startingCard: null,
+
+  state: 'pre-deal',
+
+  error: null,
 };
 
 export const reducer = (
   state: State = initialState,
-  action: Action & { userId?: string }
+  action: Action & { userId: string }
 ): State => {
   switch (action.type) {
     case 'RESET': {
@@ -62,25 +68,30 @@ export const reducer = (
     }
 
     case 'JOIN': {
-      if (!action.userId) {
-        throw new Error('Missing userId!');
-      }
-
-      const existingUser = findPlayerById(action.userId, state.players);
-      if (existingUser) {
+      if (findPlayerById(action.userId, state.players)) {
         return getErrorState(state, GAME_ERROR_PLAYER_ALREADY_EXISTS);
       }
 
-      const newPlayer = createPlayer(action.userId, action.name);
+      // Add user to spectators when game is in progress
+      if (state.state !== 'pre-deal') {
+        return {
+          ...state,
 
-      const newPlayers = [...state.players, newPlayer];
+          error: null,
+
+          spectactors: [
+            ...state.spectactors,
+            createSpectator(action.userId, action.name),
+          ],
+        };
+      }
 
       return {
         ...state,
 
         error: null,
 
-        players: newPlayers,
+        players: [...state.players, createPlayer(action.userId, action.name)],
       };
     }
 
@@ -93,19 +104,36 @@ export const reducer = (
         players: state.players.filter(({ userId }) => userId !== action.userId),
       };
 
+    case 'USER_DISCONNECT': {
+      // TODO: global error state?
+
+      return {
+        ...state,
+
+        error: null,
+
+        players: updatePlayers(
+          state.players,
+          (player) => ({ ...player, connected: false }),
+          action.userId
+        ),
+      };
+    }
+
     case 'DEAL': {
       // Get shuffled deck
       const deck = getDeck(true);
 
       const playerCount = state.players.length;
-      const newPlayers = [...state.players];
+
+      const playersClone = [...state.players];
 
       // Set dealer
-      newPlayers[
-        newPlayers.findIndex(({ userId }) => userId === action.userId)
+      playersClone[
+        playersClone.findIndex(({ userId }) => userId === action.userId)
       ].isDealer = true;
 
-      const iteratePlayers = getIterator(newPlayers);
+      const iteratePlayers = getIterator(playersClone);
       const counts = calcCardCounts(playerCount);
       const startCardHandCount = counts.hand;
 
@@ -127,7 +155,7 @@ export const reducer = (
       }
 
       // Sort players' cards
-      newPlayers.forEach(sortPlayerCards);
+      playersClone.forEach(sortPlayerCards);
 
       return {
         ...state,
@@ -144,7 +172,7 @@ export const reducer = (
         tableDiscarded: [],
         tablePile: [],
 
-        players: newPlayers,
+        players: playersClone,
         currentPlayerUserId: null,
       };
     }
@@ -154,20 +182,21 @@ export const reducer = (
         return getErrorState(state, GAME_ERROR_SWAP_UNFAIR);
       }
 
-      const currentPlayerIdx = state.players.findIndex(
-        ({ userId }) => userId === action.userId
-      );
+      const player = findPlayerById(action.userId, state.players);
+      if (!player) {
+        return state;
+      }
 
-      // Clone user
-      const player = { ...state.players[currentPlayerIdx] };
+      // Clone player
+      const playerClone = { ...player };
 
       // Check if card is in hand
-      if (_.difference(action.cardsHand, player.cardsHand).length) {
+      if (_.difference(action.cardsHand, playerClone.cardsHand).length) {
         return getErrorState(state, GAME_ERROR_ILLEGAL_MOVE_CARD_NOT_IN_HAND);
       }
 
       // Check if card is in open pile
-      if (_.difference(action.cardsOpen, player.cardsOpen).length) {
+      if (_.difference(action.cardsOpen, playerClone.cardsOpen).length) {
         return getErrorState(
           state,
           GAME_ERROR_ILLEGAL_MOVE_CARD_NOT_IN_OPEN_PILE
@@ -175,24 +204,24 @@ export const reducer = (
       }
 
       // Swap cards
-      player.cardsHand = [
-        ..._.difference(player.cardsHand, action.cardsHand),
+      playerClone.cardsHand = [
+        ..._.difference(playerClone.cardsHand, action.cardsHand),
         ...action.cardsOpen,
       ];
-      player.cardsOpen = [
-        ..._.difference(player.cardsOpen, action.cardsOpen),
+      playerClone.cardsOpen = [
+        ..._.difference(playerClone.cardsOpen, action.cardsOpen),
         ...action.cardsHand,
       ];
 
       // Sort player's cards
-      sortPlayerCards(player);
+      sortPlayerCards(playerClone);
 
       return {
         ...state,
 
         error: null,
 
-        players: updatePlayers(state.players, player),
+        players: updatePlayers(state.players, playerClone),
       };
     }
 
@@ -213,6 +242,7 @@ export const reducer = (
         currentPlayerUserId: startingPlayer.userId,
 
         startingCard,
+
         state: 'playing',
       };
     }
@@ -226,13 +256,9 @@ export const reducer = (
     }
 
     case 'PLAY': {
-      if (!action.userId) {
-        throw new Error('Missing userId!');
-      }
-
       // Clone player
-      let player = findPlayerById(action.userId, state.players);
-      if (!player) {
+      const playerClone = findPlayerById(action.userId, state.players);
+      if (!playerClone) {
         return state;
       }
 
@@ -261,10 +287,10 @@ export const reducer = (
 
       // Playing blind card
       const blindCard =
-        player.cardsHand.length === 0 &&
-        player.cardsOpen.length === 0 &&
+        playerClone.cardsHand.length === 0 &&
+        playerClone.cardsOpen.length === 0 &&
         action.cards.length === 1 &&
-        player.cardsClosed.includes(action.cards[0])
+        playerClone.cardsClosed.includes(action.cards[0])
           ? action.cards[0]
           : undefined;
       if (blindCard) {
@@ -280,16 +306,16 @@ export const reducer = (
           const tablePile = [...state.tablePile, ...action.cards];
 
           // Remove blind card from closed cards
-          player.cardsClosed = player.cardsClosed.filter(
+          playerClone.cardsClosed = playerClone.cardsClosed.filter(
             (c) => c !== blindCard
           );
-          player.turns = player.turns + 1;
+          playerClone.turns = playerClone.turns + 1;
 
           return getErrorState(
             {
               ...state,
               tablePile,
-              players: updatePlayers(state.players, player),
+              players: updatePlayers(state.players, playerClone),
             },
             new GameError(
               GAME_ERROR_ILLEGAL_MOVE_BLIND,
@@ -312,9 +338,11 @@ export const reducer = (
         }
 
         // Cards can be removed from all piles
-        player.cardsHand = player.cardsHand.filter((c) => c !== card);
-        player.cardsOpen = player.cardsOpen.filter((c) => c !== card);
-        player.cardsClosed = player.cardsClosed.filter((c) => c !== card);
+        playerClone.cardsHand = playerClone.cardsHand.filter((c) => c !== card);
+        playerClone.cardsOpen = playerClone.cardsOpen.filter((c) => c !== card);
+        playerClone.cardsClosed = playerClone.cardsClosed.filter(
+          (c) => c !== card
+        );
       }
 
       const tableDeck = [...state.tableDeck];
@@ -322,27 +350,28 @@ export const reducer = (
       // Add cards back into players hand while there are cards in the deck and the player doesn't have enough in hand
       while (
         tableDeck.length &&
-        player.cardsHand.length < state.startCardHandCount!
+        playerClone.cardsHand.length < state.startCardHandCount!
       ) {
-        player.cardsHand.push(tableDeck.shift()!);
+        playerClone.cardsHand.push(tableDeck.shift()!);
       }
 
       // Increase player turns
-      player.turns = player.turns + 1;
+      playerClone.turns = playerClone.turns + 1;
 
       // Player is finished if there are no more cards left
-      if (isPlayerFinished(player)) {
-        player.isFinished = true;
+      if (isPlayerFinished(playerClone)) {
+        playerClone.isFinished = true;
       }
 
-      const newPlayers = updatePlayers(state.players, player);
+      // Create all new players before modifying them
+      const playersClone = updatePlayers(state.players, playerClone);
 
       // Check how many players are skipped by counting number of 8 cards played
       const skipPlayers = action.cards.filter((c) => getCardObj(c).rank === 8)
         .length;
 
       // Warn: pass new players data because (instead of players still in `state`)
-      const nextPlayer = getNextPlayer(player, newPlayers, skipPlayers);
+      const nextPlayer = getNextPlayer(playerClone, playersClone, skipPlayers);
       let nextPlayerUserId = nextPlayer.userId;
 
       // Check for clear the deck
@@ -353,7 +382,7 @@ export const reducer = (
 
       // If only one player left
       let newGameState = state.state;
-      if (newPlayers.filter((player) => !player.isFinished).length === 1) {
+      if (playersClone.filter((player) => !player.isFinished).length === 1) {
         // A shithead has been crowned!
         newGameState = 'ended';
       } else if (shouldClearThePile(tablePile)) {
@@ -361,9 +390,9 @@ export const reducer = (
         // else we would not be able to finish the game after clearing the deck
         newGameState = 'clear-the-pile';
 
-        if (!player.isFinished) {
+        if (!playerClone.isFinished) {
           // Keep same player when clearing the deck
-          nextPlayerUserId = player.userId;
+          nextPlayerUserId = playerClone.userId;
         }
       }
 
@@ -379,7 +408,7 @@ export const reducer = (
         tableDeck,
         tableDiscarded,
 
-        players: newPlayers,
+        players: playersClone,
         currentPlayerUserId: nextPlayerUserId,
       };
     }
@@ -401,10 +430,6 @@ export const reducer = (
     }
 
     case 'PICK': {
-      if (!action.userId) {
-        throw new Error('Missing userId!');
-      }
-
       // If also picking own cards, they must be of the same rank!
       if (
         action.ownCards &&
@@ -417,32 +442,38 @@ export const reducer = (
         );
       }
 
-      const player = findPlayerById(action.userId, state.players);
-      if (!player) {
+      const playerClone = findPlayerById(action.userId, state.players);
+      if (!playerClone) {
         return state;
       }
 
       // Take the (shit)pile
-      player.cardsHand = [...player.cardsHand, ...state.tablePile];
+      playerClone.cardsHand = [...playerClone.cardsHand, ...state.tablePile];
 
       if (action.ownCards && action.ownCards.length) {
         // Filter cards already in hand (this could happen by accident, we just want to make sure)
-        action.ownCards = _.difference(action.ownCards, player.cardsHand);
+        action.ownCards = _.difference(action.ownCards, playerClone.cardsHand);
 
         // Remove own cards from whatever pile
-        player.cardsOpen = _.difference(player.cardsOpen, action.ownCards);
-        player.cardsClosed = _.difference(player.cardsClosed, action.ownCards);
+        playerClone.cardsOpen = _.difference(
+          playerClone.cardsOpen,
+          action.ownCards
+        );
+        playerClone.cardsClosed = _.difference(
+          playerClone.cardsClosed,
+          action.ownCards
+        );
 
         // Add to cards in hand
-        player.cardsHand = [...player.cardsHand, ...action.ownCards];
+        playerClone.cardsHand = [...playerClone.cardsHand, ...action.ownCards];
       }
 
       // Sort player's cards
-      sortPlayerCards(player);
+      sortPlayerCards(playerClone);
 
-      const newPlayers = updatePlayers(state.players, player);
+      const playersClone = updatePlayers(state.players, playerClone);
 
-      const nextPlayer = getNextPlayer(player, newPlayers);
+      const nextPlayer = getNextPlayer(playerClone, playersClone);
 
       return {
         ...state,
@@ -451,7 +482,7 @@ export const reducer = (
 
         tablePile: [],
 
-        players: newPlayers,
+        players: playersClone,
         currentPlayerUserId: nextPlayer.userId,
       };
     }

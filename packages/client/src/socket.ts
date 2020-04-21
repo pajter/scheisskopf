@@ -33,6 +33,8 @@ export const subscribeStore = (store: Store) => {
   }
 
   socket.on('syncRoom', (state: StateRoom) => {
+    console.info('SYNC_ROOM', state);
+
     // Sync store from server
     store.dispatch({
       type: 'SYNC',

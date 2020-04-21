@@ -36,7 +36,9 @@ function Login() {
         <>
           <br />
           <br />
-          <button onClick={join}>Create room</button>
+          <button disabled={!name} onClick={join}>
+            Create room
+          </button>
           <br />
           <br />
           <b>or</b>
@@ -52,14 +54,16 @@ function Login() {
           <br />
           <input
             type="text"
-            placeholder="room code"
+            placeholder="Room code"
             value={roomId}
             onChange={(e) => setRoomId(e.target.value)}
           />
 
           <br />
           <br />
-          <button onClick={join}>Join</button>
+          <button disabled={!(roomId && name)} onClick={join}>
+            Join
+          </button>
           <br />
           <br />
           <button onClick={() => toggleJoin(false)}>Cancel</button>
@@ -82,11 +86,24 @@ export function HomeRoute() {
     });
   };
 
+  const leave = () => {
+    emitActionRoom({
+      type: 'LEAVE',
+    });
+  };
+
   const swap = (cardsHand: CardId[], cardsOpen: CardId[]) => {
     emitActionRoom({
       type: 'SWAP',
       cardsHand,
       cardsOpen,
+    });
+  };
+
+  const play = (cardId: CardId) => {
+    emitActionRoom({
+      type: 'PLAY',
+      cards: [cardId],
     });
   };
 
@@ -96,8 +113,10 @@ export function HomeRoute() {
     });
   };
 
+  const isPlaying = stateRoom.currentPlayerUserId === stateRoom.player.userId;
+
   return (
-    <div>
+    <>
       <div className="stick pad">
         <div className="header">
           <h1 style={{ flex: 1 }}>
@@ -110,67 +129,124 @@ export function HomeRoute() {
           {stateRoom.state === 'pre-game' && (
             <button onClick={start}>start</button>
           )}
+          <button onClick={leave}>leave</button>
         </div>
 
-        <div className="deck">
-          <div className="card-stack -overlap-large">
-            {Array.from(Array(stateRoom.cardsDeckCount)).map((_, idx) => (
-              <CardButton key={idx} />
-            ))}
+        <div style={{ display: 'flex' }}>
+          <div className="deck" style={{ flex: 1 }}>
+            {/* TODO: pick from deck manually */}
+            <div className="card-stack -overlap-large">
+              {Array.from(Array(stateRoom.cardsDeckCount)).map((_, idx) => (
+                <CardButton key={idx} />
+              ))}
+            </div>
+          </div>
+
+          <div className="discarded" style={{ flex: 1 }}>
+            <div className="card-stack -overlap-large">
+              {Array.from(Array(stateRoom.cardsDiscardedCount)).map(
+                (_, idx) => (
+                  <CardIcon key={idx} />
+                )
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="discarded">
-          <div className="card-stack">
-            {Array.from(Array(stateRoom.cardsDiscardedCount)).map((_, idx) => (
-              <CardIcon key={idx} />
+        <div className="pile" style={{ marginTop: '16px' }}>
+          <div className="card-stack -overlap">
+            {stateRoom.cardsPile.map((cardId) => (
+              <CardIcon cardId={cardId} key={cardId} />
             ))}
           </div>
-        </div>
 
-        <div className="pile">
-          {stateRoom.cardsPile.map((cardId) => (
-            <CardIcon cardId={cardId} key={cardId} />
-          ))}
+          <div style={{ flex: 1 }}></div>
+
+          {stateRoom.state === 'clear-the-pile' && (
+            <button onClick={() => emitActionRoom({ type: 'CLEAR_THE_PILE' })}>
+              CLEAR THE DECK
+            </button>
+          )}
+
+          {isPlaying && stateRoom.player.mandatoryAction === 'pick' && (
+            <button onClick={() => emitActionRoom({ type: 'PICK' })}>
+              PICK
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="pad">
+      {/* SELF */}
+      <div className={`player pad ${isPlaying ? '-highlight' : ''}`}>
         <h2>
           You: {stateRoom.player.name} <code>{stateRoom.player.userId}</code>
         </h2>
 
         <div>
           <h5>Closed</h5>
-          {Array.from(Array(stateRoom.player.cardsClosedCount)).map(
-            (_, idx) => (
-              <CardButton key={idx} />
-            )
-          )}
+          <div className="card-stack -spaced">
+            {Array.from(Array(stateRoom.player.cardsClosedCount)).map(
+              (_, idx) => (
+                <CardButton
+                  key={idx}
+                  disabled={
+                    !isPlaying ||
+                    stateRoom.player.cardsOpen.length > 0 ||
+                    stateRoom.player.cardsHand.length > 0
+                  }
+                />
+              )
+            )}
+          </div>
         </div>
 
         <div>
           <h5>Open</h5>
-          {stateRoom.player.cardsOpen.map((cardId) => (
-            <CardButton cardId={cardId} />
-          ))}
+          <div className="card-stack -spaced">
+            {stateRoom.player.cardsOpen.map((cardId) => (
+              <CardButton
+                key={cardId}
+                cardId={cardId}
+                disabled={!isPlaying || stateRoom.player.cardsHand.length > 0}
+                onClick={() => play(cardId)}
+              />
+            ))}
+          </div>
         </div>
 
         <div>
           <h5>Hand</h5>
-          {stateRoom.player.cardsHand.map((cardId) => (
-            <CardButton cardId={cardId} />
-          ))}
+          <div className="card-stack -spaced">
+            {stateRoom.player.cardsHand.map((cardId) => (
+              <CardButton
+                key={cardId}
+                cardId={cardId}
+                disabled={!isPlaying}
+                onClick={() => play(cardId)}
+              />
+            ))}
+          </div>
         </div>
       </div>
-      <div>
+
+      <hr />
+
+      <div className="pad">
         <h2>Players</h2>
 
         {stateRoom.otherPlayers.map((otherPlayer, idx) => {
           return (
-            <div key={idx}>
-              <h3>{otherPlayer.name}</h3>
-              <code>{otherPlayer.userId}</code>
+            <div
+              className={`player ${
+                stateRoom.currentPlayerUserId === otherPlayer.userId
+                  ? '-highlight'
+                  : ''
+              }`}
+              key={idx}
+            >
+              <h3>
+                {otherPlayer.name} <code>{otherPlayer.userId}</code>
+              </h3>
 
               <div>
                 <h5>Closed</h5>
@@ -198,6 +274,6 @@ export function HomeRoute() {
           );
         })}
       </div>
-    </div>
+    </>
   );
 }

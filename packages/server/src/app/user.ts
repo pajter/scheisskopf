@@ -21,22 +21,33 @@ export class ScheissUser {
     console.info('Connection from', this.socket.id);
 
     // Listen for room actions
-    socket.on('actionRoom', (action) =>
-      this.handleActionRoom({ ...action, userId: this.userId })
-    );
+    socket.on('actionRoom', (action) => {
+      try {
+        this.handleActionRoom({ ...action, userId: this.userId });
+      } catch (err) {
+        console.logError(err);
+      }
+    });
 
     // Listen for disconnect
-    socket.on('disconnect', this.handleDisconnect);
+    socket.on('disconnect', () => {
+      try {
+        this.handleDisconnect;
+      } catch (err) {
+        console.logError(err);
+      }
+    });
   }
 
   private handleActionRoom = (action: ActionRoom & { userId: string }) => {
-    console.debug('actionRoom', this.userId);
+    console.logDebug('HANDLE_ACTION_ROOM', this.userId);
 
     // Find existing room for this user
     let room = findRoomForUserId(this.userId);
+
     if (action.type === 'JOIN') {
       if (!action.roomId) {
-        console.debug('CREATE_ROOM');
+        console.logDebug('CREATE_ROOM');
 
         // Create room in server store first
         room = createRoom();
@@ -45,8 +56,12 @@ export class ScheissUser {
         action.roomId = room.getState().roomId;
       } else {
         // Find room by ID
-        // TODO: error handling to signal to a user if a room doesn't exist
         room = findRoomForId(action.roomId);
+
+        // TODO: error handling to signal to a user if a room doesn't exist
+        if (!room) {
+          throw new Error('Room ID to join can not be found!');
+        }
       }
     }
 
@@ -54,14 +69,13 @@ export class ScheissUser {
       throw new Error("Room is undefined. This wasn't supposed to happen.");
     }
 
-    console.debug('Dispatching', action);
     room.dispatch(action);
 
     syncRoom(room.getState().roomId, this.userId);
   };
 
   private handleDisconnect = (reason: any) => {
-    console.debug('Disconnection from', this.socket.id, reason);
+    console.logDebug('SOCKET_DISCONNECT', this.socket.id, reason);
 
     // TODO: AFK/reconnect handling
 
@@ -70,7 +84,7 @@ export class ScheissUser {
       return;
     }
 
-    room.dispatch({ type: 'LEAVE', userId: this.userId });
+    room.dispatch({ type: 'USER_DISCONNECT', userId: this.userId });
 
     removeUser(this.userId);
   };
