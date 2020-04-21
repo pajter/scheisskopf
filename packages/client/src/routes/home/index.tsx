@@ -2,37 +2,16 @@ import React from 'react';
 import _ from 'lodash';
 
 import { CardId } from '../../../../_shared/types';
-import { getCardObj, getRankName } from '../../../../_shared/util';
 
 import { useSelector } from '../../redux/hooks';
 import { emitActionRoom } from '../../socket';
-
-function CardIcon({ cardId }: { cardId?: CardId }) {
-  const EMOJI = {
-    club: '♣️',
-    diamond: '♦️',
-    heart: '♥️',
-    spade: '♠️',
-  } as const;
-
-  const cardObj =
-    typeof cardId === 'undefined' ? undefined : getCardObj(cardId);
-
-  return (
-    <div className={`card-icon ${!cardObj ? '-hidden' : ''}`}>
-      {cardObj && (
-        <>
-          <div>{EMOJI[cardObj.suit]}</div>
-          <div>{getRankName(cardObj.rank)}</div>
-        </>
-      )}
-    </div>
-  );
-}
+import { CardIcon } from '../../components/card-icon';
+import { CardButton } from '../../components/card-button';
 
 function Login() {
   const [name, setName] = React.useState('');
   const [roomId, setRoomId] = React.useState('');
+  const [showJoin, setShowJoin] = React.useState(false);
 
   const join = () => {
     emitActionRoom({
@@ -42,8 +21,10 @@ function Login() {
     });
   };
 
+  const toggleJoin = (state = !showJoin) => setShowJoin(state);
+
   return (
-    <div>
+    <div className="pad">
       <input
         type="text"
         placeholder="name"
@@ -51,17 +32,39 @@ function Login() {
         onChange={(e) => setName(e.target.value)}
       />
 
-      <h2>{roomId ? 'Join' : 'Create'} room</h2>
+      {!showJoin && (
+        <>
+          <br />
+          <br />
+          <button onClick={join}>Create room</button>
+          <br />
+          <br />
+          <b>or</b>
+          <br />
+          <br />
+          <button onClick={() => toggleJoin(true)}>Join existing room</button>
+        </>
+      )}
 
-      <input
-        type="text"
-        placeholder="room code"
-        value={roomId}
-        onChange={(e) => setRoomId(e.target.value)}
-      />
+      {showJoin && (
+        <>
+          <br />
+          <br />
+          <input
+            type="text"
+            placeholder="room code"
+            value={roomId}
+            onChange={(e) => setRoomId(e.target.value)}
+          />
 
-      <br />
-      <button onClick={join}>{roomId ? 'Join' : 'Create'}</button>
+          <br />
+          <br />
+          <button onClick={join}>Join</button>
+          <br />
+          <br />
+          <button onClick={() => toggleJoin(false)}>Cancel</button>
+        </>
+      )}
     </div>
   );
 }
@@ -79,47 +82,84 @@ export function HomeRoute() {
     });
   };
 
+  const swap = (cardsHand: CardId[], cardsOpen: CardId[]) => {
+    emitActionRoom({
+      type: 'SWAP',
+      cardsHand,
+      cardsOpen,
+    });
+  };
+
+  const start = () => {
+    emitActionRoom({
+      type: 'START',
+    });
+  };
+
   return (
     <div>
-      <div className="stick">
-        <b>room code: {stateRoom.roomId}</b>
-        <button onClick={deal}>deal</button>
+      <div className="stick pad">
+        <div className="header">
+          <h1 style={{ flex: 1 }}>
+            Room code: <code>{stateRoom.roomId}</code>
+          </h1>
 
-        <div>
-          <b>deck</b>
-          <code>{stateRoom.cardsDeckCount}</code>
+          {stateRoom.state === 'pre-deal' && (
+            <button onClick={deal}>deal</button>
+          )}
+          {stateRoom.state === 'pre-game' && (
+            <button onClick={start}>start</button>
+          )}
         </div>
-        <div>
-          <b>discarded</b>
-          <code>{stateRoom.cardsDiscardedCount}</code>
+
+        <div className="deck">
+          <div className="card-stack -overlap-large">
+            {Array.from(Array(stateRoom.cardsDeckCount)).map((_, idx) => (
+              <CardButton key={idx} />
+            ))}
+          </div>
         </div>
-        <div>
-          <b>pile</b>
+
+        <div className="discarded">
+          <div className="card-stack">
+            {Array.from(Array(stateRoom.cardsDiscardedCount)).map((_, idx) => (
+              <CardIcon key={idx} />
+            ))}
+          </div>
+        </div>
+
+        <div className="pile">
           {stateRoom.cardsPile.map((cardId) => (
             <CardIcon cardId={cardId} key={cardId} />
           ))}
         </div>
       </div>
-      <div>
-        <h2>You: {stateRoom.player.name}</h2>
-        <code>{stateRoom.player.userId}</code>
+
+      <div className="pad">
+        <h2>
+          You: {stateRoom.player.name} <code>{stateRoom.player.userId}</code>
+        </h2>
 
         <div>
-          <b>card closed</b>
-          <code>{stateRoom.player.cardsClosedCount}</code>
+          <h5>Closed</h5>
+          {Array.from(Array(stateRoom.player.cardsClosedCount)).map(
+            (_, idx) => (
+              <CardButton key={idx} />
+            )
+          )}
         </div>
 
         <div>
-          <b>cards open</b>
+          <h5>Open</h5>
           {stateRoom.player.cardsOpen.map((cardId) => (
-            <CardIcon cardId={cardId} />
+            <CardButton cardId={cardId} />
           ))}
         </div>
 
         <div>
-          <b>cards hand</b>
+          <h5>Hand</h5>
           {stateRoom.player.cardsHand.map((cardId) => (
-            <CardIcon cardId={cardId} />
+            <CardButton cardId={cardId} />
           ))}
         </div>
       </div>
@@ -133,20 +173,26 @@ export function HomeRoute() {
               <code>{otherPlayer.userId}</code>
 
               <div>
-                <b>card closed</b>
-                <code>{otherPlayer.cardsClosedCount}</code>
+                <h5>Closed</h5>
+                {Array.from(Array(otherPlayer.cardsClosedCount)).map(
+                  (_, idx) => (
+                    <CardIcon key={idx} />
+                  )
+                )}
               </div>
 
               <div>
-                <b>cards open</b>
+                <h5>Open</h5>
                 {otherPlayer.cardsOpen.map((cardId) => (
                   <CardIcon cardId={cardId} />
                 ))}
               </div>
 
               <div>
-                <b>cards hand</b>
-                <code>{otherPlayer.cardsHandCount}</code>
+                <h5>Hand</h5>
+                {Array.from(Array(otherPlayer.cardsHandCount)).map((_, idx) => (
+                  <CardIcon key={idx} />
+                ))}
               </div>
             </div>
           );
