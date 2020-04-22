@@ -5,6 +5,8 @@ import {
 } from 'redux';
 import { composeWithDevTools } from 'remote-redux-devtools';
 
+import { ScheissUser } from '../app/user';
+
 import { reducer, initialState as _initialState } from './reducer';
 import { Store, State, Action } from './types';
 
@@ -17,10 +19,11 @@ let composeEnhancers =
       })
     : (cb: Function) => cb();
 
-const logger = (store: MiddlewareAPI) => (next: (action: Action) => any) => (
-  action: Action
-) => {
-  console.logAction(action);
+const logger = (store: MiddlewareAPI) => (
+  next: (action: Action & { user: ScheissUser }) => any
+) => (action: Action & { user: ScheissUser }) => {
+  const { user, ...actionClean } = action;
+  console.logAction({ userId: user.userId, ...actionClean });
   const result = next(action);
   console.logState(store.getState());
   return result;

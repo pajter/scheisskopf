@@ -4,111 +4,48 @@ import _ from 'lodash';
 import { CardId } from '../../../../_shared/types';
 
 import { useSelector } from '../../redux/hooks';
-import { emitActionRoom } from '../../socket';
+import { emit } from '../../socket';
+
 import { CardIcon } from '../../components/card-icon';
 import { CardButton } from '../../components/card-button';
-
-function Login() {
-  const [name, setName] = React.useState('');
-  const [roomId, setRoomId] = React.useState('');
-  const [showJoin, setShowJoin] = React.useState(false);
-
-  const join = () => {
-    emitActionRoom({
-      type: 'JOIN',
-      roomId,
-      name,
-    });
-  };
-
-  const toggleJoin = (state = !showJoin) => setShowJoin(state);
-
-  return (
-    <div className="pad">
-      <input
-        type="text"
-        placeholder="name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
-
-      {!showJoin && (
-        <>
-          <br />
-          <br />
-          <button disabled={!name} onClick={join}>
-            Create room
-          </button>
-          <br />
-          <br />
-          <b>or</b>
-          <br />
-          <br />
-          <button onClick={() => toggleJoin(true)}>Join existing room</button>
-        </>
-      )}
-
-      {showJoin && (
-        <>
-          <br />
-          <br />
-          <input
-            type="text"
-            placeholder="Room code"
-            value={roomId}
-            onChange={(e) => setRoomId(e.target.value)}
-          />
-
-          <br />
-          <br />
-          <button disabled={!(roomId && name)} onClick={join}>
-            Join
-          </button>
-          <br />
-          <br />
-          <button onClick={() => toggleJoin(false)}>Cancel</button>
-        </>
-      )}
-    </div>
-  );
-}
+import { Redirect } from 'react-router-dom';
 
 export function HomeRoute() {
   const stateRoom = useSelector((state) => state.room);
 
   if (!stateRoom) {
-    return <Login />;
+    return <Redirect to="/join" />;
   }
 
   const deal = () => {
-    emitActionRoom({
+    emit('actionRoom', {
       type: 'DEAL',
     });
   };
 
   const leave = () => {
-    emitActionRoom({
+    emit('actionRoom', {
       type: 'LEAVE',
     });
   };
 
-  const swap = (cardsHand: CardId[], cardsOpen: CardId[]) => {
-    emitActionRoom({
-      type: 'SWAP',
-      cardsHand,
-      cardsOpen,
-    });
-  };
+  // const swap = (cardsHand: CardId[], cardsOpen: CardId[]) => {
+  //   emit('actionRoom', {
+  //     type: 'SWAP',
+  //     cardsHand,
+  //     cardsOpen,
+  //   });
+  // };
 
   const play = (cardId: CardId) => {
-    emitActionRoom({
+    emit('actionRoom', {
       type: 'PLAY',
       cards: [cardId],
     });
   };
 
   const start = () => {
-    emitActionRoom({
+    emit('actionRoom', {
       type: 'START',
     });
   };
@@ -163,13 +100,15 @@ export function HomeRoute() {
           <div style={{ flex: 1 }}></div>
 
           {stateRoom.state === 'clear-the-pile' && (
-            <button onClick={() => emitActionRoom({ type: 'CLEAR_THE_PILE' })}>
+            <button
+              onClick={() => emit('actionRoom', { type: 'CLEAR_THE_PILE' })}
+            >
               CLEAR THE DECK
             </button>
           )}
 
           {isPlaying && stateRoom.player.mandatoryAction === 'pick' && (
-            <button onClick={() => emitActionRoom({ type: 'PICK' })}>
+            <button onClick={() => emit('actionRoom', { type: 'PICK' })}>
               PICK
             </button>
           )}

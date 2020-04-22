@@ -1,50 +1,103 @@
-import { Action as ActionRoom } from '../redux/types';
+import { Action as ActionRoom, Store } from '../redux/types';
 
+import { getSocketFunctions } from './socket';
 import {
   createRoom,
   findRoomForId,
   syncRoom,
-  removeUser,
   findRoomForUserId,
+  createUniqueUserId,
 } from './index';
 
 export class ScheissUser {
   socket: SocketIO.Socket;
+
+  emit: ReturnType<typeof getSocketFunctions>['emit'];
+  listen: ReturnType<typeof getSocketFunctions>['listen'];
+
+  username: string;
+
   userId: string;
 
-  constructor(socket: SocketIO.Socket) {
+  lastPing: Date;
+
+  constructor(username: string, socket: SocketIO.Socket) {
     this.socket = socket;
 
-    // TODO: user id from socket?
-    this.userId = socket.id;
+    const socketFunctions = getSocketFunctions(socket);
 
-    console.info('Connection from', this.socket.id);
+    this.emit = socketFunctions.emit;
+    this.listen = socketFunctions.listen;
 
-    // Listen for room actions
-    socket.on('actionRoom', (action) => {
+    this.username = username;
+
+    this.userId = createUniqueUserId(username, socket.id);
+
+    this.lastPing = new Date();
+
+    this.init();
+  }
+
+  private init() {
+    // Listen for socket disconnect
+    this.socket.on('disconnect', (reason) => {
       try {
-        this.handleActionRoom({ ...action, userId: this.userId });
+        this.handleDisconnect(reason);
       } catch (err) {
         console.logError(err);
       }
     });
 
-    // Listen for disconnect
-    socket.on('disconnect', () => {
+    this.listen('ping', ({ username, userId }) => {
+      if (createUniqueUserId(username, userId) === this.userId) {
+        this.lastPing = new Date();
+
+        this.emit('ping', {});
+      }
+    });
+
+    // Start listening for room actions
+    this.listen('actionRoom', (action) => {
       try {
-        this.handleDisconnect;
+        this.handleActionRoom(action);
       } catch (err) {
         console.logError(err);
       }
     });
   }
 
-  private handleActionRoom = (action: ActionRoom & { userId: string }) => {
+  resumeSession(socket: SocketIO.Socket) {
+    this.socket = socket;
+
+    const socketFunctions = getSocketFunctions(socket);
+
+    this.emit = socketFunctions.emit;
+    this.listen = socketFunctions.listen;
+
+    this.init();
+  }
+
+  private dispatch(action: ActionRoom, room?: Store) {
+    room = typeof room === 'undefined' ? findRoomForUserId(this.userId!) : room;
+
+    if (!room) {
+      return;
+    }
+
+    room.dispatch({ ...action, user: this });
+  }
+
+  private handleActionRoom = (action: ActionRoom) => {
+    if (!this.userId) {
+      return;
+    }
+
     console.logDebug('HANDLE_ACTION_ROOM', this.userId);
 
     // Find existing room for this user
     let room = findRoomForUserId(this.userId);
 
+    // Note: JOIN can also create first before joining
     if (action.type === 'JOIN') {
       if (!action.roomId) {
         console.logDebug('CREATE_ROOM');
@@ -60,32 +113,40 @@ export class ScheissUser {
 
         // TODO: error handling to signal to a user if a room doesn't exist
         if (!room) {
-          throw new Error('Room ID to join can not be found!');
+          throw new Error('HANDLE_ACTION_ROOM: No room to join');
         }
       }
     }
 
-    if (!room) {
-      throw new Error("Room is undefined. This wasn't supposed to happen.");
+    if (action.type === 'REJOIN') {
+      room = findRoomForId(action.roomId);
+
+      if (!room) {
+        throw new Error('HANDLE_ACTION_ROOM: No room to rejoin');
+      }
+
+      // Check if user was actually in room
+      if (!room.getState().players.find((u) => u.userId === this.userId)) {
+        throw new Error('HANDLE_ACTION_ROOM: User was not in requested room');
+      }
     }
 
-    room.dispatch(action);
+    if (!room) {
+      throw new Error('HANDLE_ACTION_ROOM: Room is undefined');
+    }
 
-    syncRoom(room.getState().roomId, this.userId);
+    this.dispatch(action, room);
+
+    syncRoom(room, this.userId);
   };
 
-  private handleDisconnect = (reason: any) => {
-    console.logDebug('SOCKET_DISCONNECT', this.socket.id, reason);
+  private handleDisconnect = (_reason: any) => {
+    console.logDebug('SOCKET_DISCONNECT', this.socket.id);
 
-    // TODO: AFK/reconnect handling
-
-    const room = findRoomForUserId(this.userId);
-    if (!room) {
+    if (!this.userId) {
       return;
     }
 
-    room.dispatch({ type: 'USER_DISCONNECT', userId: this.userId });
-
-    removeUser(this.userId);
+    this.dispatch({ type: 'USER_DISCONNECT' });
   };
 }

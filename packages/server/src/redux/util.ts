@@ -11,10 +11,13 @@ import { CardId } from '../../../_shared/types';
 
 import { Player, State, Spectator } from './types';
 import { GameErrorCode, GameError } from './error';
+import { ScheissUser } from '../app/user';
 
-export const createPlayer = (userId: string, name: string): Player => ({
-  userId,
-  name,
+export const createPlayer = (
+  user: ScheissUser & { userId: string }
+): Player => ({
+  userId: user.userId,
+  name: user.username,
   cardsClosed: [],
   cardsHand: [],
   cardsOpen: [],
@@ -25,9 +28,11 @@ export const createPlayer = (userId: string, name: string): Player => ({
   lastPing: new Date(),
 });
 
-export const createSpectator = (userId: string, name: string): Spectator => ({
-  userId,
-  name,
+export const createSpectator = (
+  user: ScheissUser & { userId: string }
+): Spectator => ({
+  userId: user.userId,
+  name: user.username,
   connected: true,
   lastPing: new Date(),
 });
@@ -68,7 +73,7 @@ export const getNextPlayer = (
 
   const nextPlayer = iteratePlayers.get();
   if (!nextPlayer) {
-    throw new Error('Could not find next player!?');
+    throw new Error('GET_NEXT_PLAYER: Could not find next player');
   }
   return { ...nextPlayer };
 };
@@ -168,7 +173,7 @@ export const updatePlayers = (
 
   const idx = players.findIndex((p) => p.userId === userId);
   if (idx < 0) {
-    throw new Error('Could not find player?!');
+    throw new Error('UPDATE_PLAYERS: Player not found');
   }
 
   const playersCopy = [...players];

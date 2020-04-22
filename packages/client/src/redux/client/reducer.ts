@@ -12,6 +12,9 @@ export const reducer = (state: State = initialState, action: Action): State => {
     case 'RESET': {
       return { ...initialState };
     }
+    case 'SET_SESSION': {
+      return { ...state, session: action.session };
+    }
     case 'SET_ERROR': {
       return { ...initialState, error: action.error };
     }

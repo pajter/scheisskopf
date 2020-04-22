@@ -1,13 +1,15 @@
 import { Store as _Store } from 'redux';
-import { CardId, Player, PlayerOpponent } from '../../../../_shared/types';
+import {
+  PlayerClient,
+  PlayerClientOpponent,
+  CardId,
+} from '../../../../_shared/types';
 
 export interface State {
-  currentPlayerUserId: string | null;
-  player: Player;
-  opponents: PlayerOpponent[];
-  cardsDeckCount: number;
-  cardsDiscardedCount: number;
-  cardsPile: CardId[];
+  roomId: string;
+
+  error: Error | null;
+
   state:
     | 'pre-deal'
     | 'pre-game'
@@ -15,8 +17,15 @@ export interface State {
     | 'paused'
     | 'clear-the-pile'
     | 'ended';
-  error: Error | null;
-  roomId: string;
+
+  currentPlayerUserId: string | null;
+
+  player: PlayerClient;
+  opponents: PlayerClientOpponent[];
+
+  cardsDeckCount: number;
+  cardsDiscardedCount: number;
+  cardsPile: CardId[];
 }
 
 export type Action = { type: 'RESET' } | { type: 'SYNC'; state: State };

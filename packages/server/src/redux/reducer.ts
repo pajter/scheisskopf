@@ -6,6 +6,8 @@ import {
   areCardsTheSameRank,
 } from '../../../_shared/util';
 
+import { ScheissUser } from '../app/user';
+
 import {
   GameError,
   E_SWAP_UNFAIR,
@@ -14,7 +16,7 @@ import {
   E_FIRST_TURN_MUST_HAVE_STARTING_CARD,
   E_ILLEGAL_MOVE_BLIND,
   E_ILLEGAL_MOVE,
-  E_USER_ALREADY_EXISTS,
+  E_PLAYER_ALREADY_EXISTS,
   E_CARD_NOT_IN_HAND,
   E_CARD_NOT_IN_OPEN_PILE,
   E_COULD_NOT_FIND_STARTING_PLAYER,
@@ -60,7 +62,7 @@ export const initialState: State = {
 
 export const reducer = (
   state: State = initialState,
-  action: Action & { userId: string }
+  action: Action & { user: ScheissUser & { userId: string } }
 ): State => {
   switch (action.type) {
     case 'RESET': {
@@ -68,8 +70,9 @@ export const reducer = (
     }
 
     case 'JOIN': {
-      if (findPlayerById(action.userId, state.players)) {
-        return getErrorState(state, E_USER_ALREADY_EXISTS);
+      const existingPlayer = findPlayerById(action.user.userId, state.players);
+      if (existingPlayer) {
+        return getErrorState(state, E_PLAYER_ALREADY_EXISTS);
       }
 
       // Add user to spectators when game is in progress
@@ -79,10 +82,7 @@ export const reducer = (
 
           error: null,
 
-          spectactors: [
-            ...state.spectactors,
-            createSpectator(action.userId, action.name),
-          ],
+          spectactors: [...state.spectactors, createSpectator(action.user)],
         };
       }
 
@@ -91,8 +91,12 @@ export const reducer = (
 
         error: null,
 
-        players: [...state.players, createPlayer(action.userId, action.name)],
+        players: [...state.players, createPlayer(action.user)],
       };
+    }
+
+    case 'REJOIN': {
+      return { ...state };
     }
 
     case 'LEAVE':
@@ -101,7 +105,9 @@ export const reducer = (
 
         error: null,
 
-        players: state.players.filter(({ userId }) => userId !== action.userId),
+        players: state.players.filter(
+          ({ userId }) => userId !== action.user.userId
+        ),
       };
 
     case 'USER_DISCONNECT': {
@@ -115,7 +121,7 @@ export const reducer = (
         players: updatePlayers(
           state.players,
           (player) => ({ ...player, connected: false }),
-          action.userId
+          action.user.userId
         ),
       };
     }
@@ -130,7 +136,7 @@ export const reducer = (
 
       // Set dealer
       playersClone[
-        playersClone.findIndex(({ userId }) => userId === action.userId)
+        playersClone.findIndex(({ userId }) => userId === action.user.userId)
       ].isDealer = true;
 
       const iteratePlayers = getIterator(playersClone);
@@ -182,7 +188,7 @@ export const reducer = (
         return getErrorState(state, E_SWAP_UNFAIR);
       }
 
-      const player = findPlayerById(action.userId, state.players);
+      const player = findPlayerById(action.user.userId, state.players);
       if (!player) {
         return state;
       }
@@ -254,7 +260,7 @@ export const reducer = (
 
     case 'PLAY': {
       // Clone player
-      const playerClone = findPlayerById(action.userId, state.players);
+      const playerClone = findPlayerById(action.user.userId, state.players);
       if (!playerClone) {
         return state;
       }
@@ -426,7 +432,7 @@ export const reducer = (
         return getErrorState(state, E_CARD_RANKS_DONT_MATCH);
       }
 
-      const playerClone = findPlayerById(action.userId, state.players);
+      const playerClone = findPlayerById(action.user.userId, state.players);
       if (!playerClone) {
         return state;
       }

@@ -32,7 +32,7 @@ Object.defineProperty(console, 'logAction', {
     if (process.env.NODE_ENV === 'development') {
       logObj(action);
     }
-    console.log('\n');
+    process.stdout.write('\n');
   },
 });
 
@@ -42,7 +42,7 @@ Object.defineProperty(console, 'logState', {
     if (process.env.NODE_ENV === 'development') {
       logObj(state);
     }
-    console.log('\n');
+    process.stdout.write('\n');
   },
 });
 
@@ -55,7 +55,7 @@ Object.defineProperty(console, 'logDebug', {
         Array.isArray(args) && args.shift(),
       ].filter(Boolean)
     );
-    args.length && console.log(...args);
-    console.log('\n');
+    args.length && console.debug(...args);
+    process.stdout.write('\n');
   },
 });

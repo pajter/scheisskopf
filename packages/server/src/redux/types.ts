@@ -57,12 +57,12 @@ export type Action =
       type: 'RESET';
     }
   | {
-      type: 'CREATE';
+      type: 'JOIN';
+      roomId?: string;
     }
   | {
-      type: 'JOIN';
-      name: string;
-      roomId?: string;
+      type: 'REJOIN';
+      roomId: string;
     }
   | {
       type: 'LEAVE';

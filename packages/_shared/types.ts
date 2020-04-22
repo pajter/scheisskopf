@@ -1,3 +1,6 @@
+import { Action as ActionServer } from '../server/src/redux/types';
+import { State as StateClientRoom } from '../client/src/redux/room/types';
+
 export type CardSuit = 'diamond' | 'heart' | 'spade' | 'club';
 
 export type CardRank =
@@ -23,15 +26,55 @@ export type MandatoryAction = 'pick';
 export interface PlayerBase {
   userId: string;
   name: string;
-  cardsOpen: CardId[];
-  cardsClosedCount: number;
+
+  connected: boolean;
+  lastPing: Date;
+
   mandatoryAction?: MandatoryAction;
+
+  // Open cards are always public
+  cardsOpen: CardId[];
 }
 
-export interface PlayerOpponent extends PlayerBase {
-  cardsHandCount: number;
+export interface Session {
+  username: string;
+  userId: string;
 }
 
-export interface Player extends PlayerBase {
+export type Err = {
+  message: string;
+};
+
+export interface PlayerServer extends PlayerBase {
+  cardsHand?: CardId[];
+  cardsClosed?: CardId[];
+}
+
+export interface PlayerClient extends PlayerBase {
   cardsHand: CardId[];
+  cardsClosedCount: number;
 }
+
+export interface PlayerClientOpponent extends PlayerBase {
+  cardsHandCount: number;
+  cardsClosedCount: number;
+}
+
+export interface SocketClientEventArgs {
+  login: { username: string };
+  ping: Session;
+  createSession: Session;
+  actionRoom: ActionServer;
+  createRoom: { userId: string };
+}
+
+export type SocketClientEvent = keyof SocketClientEventArgs;
+
+export interface SocketServerEventArgs {
+  login: { error?: Err } & Partial<Session>;
+  ping: {};
+  createSession: { error?: Err } & Partial<Session>;
+  syncRoom: StateClientRoom;
+}
+
+export type SocketServerEvent = keyof SocketServerEventArgs;

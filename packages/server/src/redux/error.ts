@@ -1,6 +1,7 @@
 import { CardId } from '../../../_shared/types';
 
-export const E_USER_ALREADY_EXISTS = 'E_USER_ALREADY_EXISTS' as const;
+export const E_PLAYER_ALREADY_EXISTS = 'E_PLAYER_ALREADY_EXISTS' as const;
+export const E_UNKNOWN_USER = 'E_UNKNOWN_USER' as const;
 export const E_SWAP_UNFAIR = 'E_SWAP_UNFAIR' as const;
 export const E_ILLEGAL_MOVE = 'E_ILLEGAL_MOVE' as const;
 export const E_ILLEGAL_MOVE_BLIND = 'E_ILLEGAL_MOVE_BLIND' as const;
@@ -12,7 +13,8 @@ export const E_CARD_NOT_IN_OPEN_PILE = 'E_CARD_NOT_IN_OPEN_PILE' as const;
 export const E_COULD_NOT_FIND_STARTING_PLAYER = 'E_COULD_NOT_FIND_STARTING_PLAYER' as const;
 
 export type GameErrorCode =
-  | typeof E_USER_ALREADY_EXISTS
+  | typeof E_PLAYER_ALREADY_EXISTS
+  | typeof E_UNKNOWN_USER
   | typeof E_SWAP_UNFAIR
   | typeof E_ILLEGAL_MOVE
   | typeof E_ILLEGAL_MOVE_BLIND

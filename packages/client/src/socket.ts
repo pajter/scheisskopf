@@ -1,8 +1,13 @@
 import io from 'socket.io-client';
 
+import {
+  SocketClientEvent,
+  SocketClientEventArgs,
+  SocketServerEvent,
+  SocketServerEventArgs,
+} from '../../_shared/types';
+
 import { Store } from './redux/types';
-import { State as StateRoom } from './redux/room/types';
-import { Action as ActionRoomServer } from '../../server/src/redux/room/types';
 
 let socket: SocketIOClient.Socket | undefined;
 
@@ -15,25 +20,41 @@ export const getConnectedSocket = () => {
       socket?.disconnect();
     });
   }
+
   return socket;
 };
 
-export const emitActionRoom = (action: ActionRoomServer) => {
+export function emit<E extends SocketClientEvent>(
+  event: E,
+  args: SocketClientEventArgs[E]
+) {
   if (!socket) {
-    throw new Error('Socket not connected!');
+    throw new Error('SOCKET: Not connected');
   }
 
-  // Send action to server
-  socket.emit('actionRoom', action);
-};
+  socket.emit(event, args);
+}
+
+export function listen<E extends SocketServerEvent>(
+  event: E,
+  handler: (args: SocketServerEventArgs[E]) => void
+) {
+  if (!socket) {
+    throw new Error('SOCKET: Not connected');
+  }
+
+  socket.on(event, handler);
+}
 
 export const subscribeStore = (store: Store) => {
   if (!socket) {
-    throw new Error('Socket not connected!');
+    throw new Error('SOCKET: Not connected');
   }
 
-  socket.on('syncRoom', (state: StateRoom) => {
-    console.info('SYNC_ROOM', state);
+  listen('syncRoom', (state) => {
+    console.debug('SYNC_ROOM', state);
+
+    localStorage.setItem('roomId', state.roomId);
 
     // Sync store from server
     store.dispatch({
@@ -41,4 +62,69 @@ export const subscribeStore = (store: Store) => {
       state,
     });
   });
+
+  listen('login', ({ error, username, userId }) => {
+    if (error) {
+      store.dispatch({
+        type: 'SET_ERROR',
+        error,
+      });
+    }
+
+    if (userId && username) {
+      localStorage.setItem('username', username);
+      localStorage.setItem('userId', userId);
+
+      store.dispatch({
+        type: 'SET_SESSION',
+        session: {
+          username,
+          userId,
+        },
+      });
+    }
+  });
+
+  listen('createSession', ({ error, username, userId }) => {
+    if (error) {
+      // Session expired
+      localStorage.removeItem('username');
+      localStorage.removeItem('userId');
+
+      store.dispatch({
+        type: 'SET_ERROR',
+        error,
+      });
+    }
+
+    if (username && userId) {
+      console.debug('Session resumed');
+      store.dispatch({
+        type: 'SET_SESSION',
+        session: {
+          username,
+          userId,
+        },
+      });
+
+      // Try to rejoin room
+      const roomId = localStorage.getItem('roomId');
+      if (username && userId && roomId) {
+        console.debug('Trying to rejoin room', roomId);
+
+        emit('actionRoom', {
+          type: 'REJOIN',
+          roomId,
+        });
+      }
+    }
+  });
+
+  // Try to resume session asap
+  const username = localStorage.getItem('username');
+  const userId = localStorage.getItem('userId');
+  if (username && userId) {
+    console.debug('Trying to resume session');
+    emit('createSession', { username, userId });
+  }
 };
