@@ -17,3 +17,21 @@ export type CardRank =
 
 // Card has format `${suit},${rank}`
 export type CardId = string;
+
+export type MandatoryAction = 'pick';
+
+export interface PlayerBase {
+  userId: string;
+  name: string;
+  cardsOpen: CardId[];
+  cardsClosedCount: number;
+  mandatoryAction?: MandatoryAction;
+}
+
+export interface PlayerOpponent extends PlayerBase {
+  cardsHandCount: number;
+}
+
+export interface Player extends PlayerBase {
+  cardsHand: CardId[];
+}

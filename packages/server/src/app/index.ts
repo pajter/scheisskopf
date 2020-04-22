@@ -1,21 +1,23 @@
 import { generateRandomString } from '../../../_shared/util';
-
 import {
-  State as StateRoomClient,
   Player,
-  PlayerOther,
+  PlayerOpponent,
   PlayerBase,
   MandatoryAction,
-} from '../../../client/src/redux/room/types';
+} from '../../../_shared/types';
+
+import { State as StateRoomClient } from '../../../client/src/redux/room/types';
+
 import {
   Store as StoreRoom,
-  Player as RoomPlayer,
-  State as RoomState,
-} from '../redux/room/types';
-import { getStore as getStoreRoom } from '../redux/room/store';
+  Player as PlayerServer,
+  State,
+} from '../redux/types';
+
+import { createStore } from '../redux/store';
+import { findPlayerById, mustPlayerPick } from '../redux/util';
 
 import { ScheissUser } from './user';
-import { findPlayerById, mustPlayerPick } from '../redux/room/util';
 
 export interface User {
   id: string;
@@ -34,12 +36,9 @@ const createUniqueRoomId = (): string => {
   return newRoomId;
 };
 
-const getRoomStatePlayerBase = (
-  player: RoomPlayer,
-  roomState: RoomState
-): PlayerBase => {
+const getPlayerBase = (player: PlayerServer, state: State): PlayerBase => {
   let mandatoryAction: MandatoryAction | undefined = undefined;
-  if (mustPlayerPick(player, roomState.tablePile)) {
+  if (mustPlayerPick(player, state.tablePile)) {
     mandatoryAction = 'pick';
   }
 
@@ -56,23 +55,20 @@ const getRoomStatePlayerBase = (
   };
 };
 
-const getRoomStatePlayer = (
-  player: RoomPlayer,
-  roomState: RoomState
-): Player => {
+const getPlayer = (player: PlayerServer, state: State): Player => {
   return {
-    ...getRoomStatePlayerBase(player, roomState),
+    ...getPlayerBase(player, state),
 
     cardsHand: player.cardsHand,
   };
 };
 
-const getRoomStateOtherPlayer = (
-  player: RoomPlayer,
-  roomState: RoomState
-): PlayerOther => {
+const getPlayerOpponent = (
+  player: PlayerServer,
+  state: State
+): PlayerOpponent => {
   return {
-    ...getRoomStatePlayerBase(player, roomState),
+    ...getPlayerBase(player, state),
 
     cardsHandCount: player.cardsHand.length,
   };
@@ -82,26 +78,24 @@ const getRoomStateOtherPlayer = (
  * Sanitize server state to 'anonimize' state for client
  *
  */
-const getRoomStateForPlayer = (
-  roomState: RoomState,
-  player: RoomPlayer
+const getStateForPlayer = (
+  state: State,
+  player: PlayerServer
 ): StateRoomClient => {
-  const otherPlayers = roomState.players.filter(
+  const opponents = state.players.filter(
     ({ userId }) => userId !== player.userId
   );
 
   return {
-    state: roomState.state,
-    currentPlayerUserId: roomState.currentPlayerUserId,
-    player: getRoomStatePlayer(player, roomState),
-    otherPlayers: otherPlayers.map((p) =>
-      getRoomStateOtherPlayer(p, roomState)
-    ),
-    cardsDeckCount: roomState.tableDeck.length,
-    cardsDiscardedCount: roomState.tableDiscarded.length,
-    cardsPile: roomState.tablePile,
-    error: roomState.error,
-    roomId: roomState.roomId,
+    state: state.state,
+    currentPlayerUserId: state.currentPlayerUserId,
+    player: getPlayer(player, state),
+    opponents: opponents.map((p) => getPlayerOpponent(p, state)),
+    cardsDeckCount: state.tableDeck.length,
+    cardsDiscardedCount: state.tableDiscarded.length,
+    cardsPile: state.tablePile,
+    error: state.error,
+    roomId: state.roomId,
   };
 };
 
@@ -137,7 +131,7 @@ export const removeRoom = (roomId: string) => {
 };
 
 export const createRoom = () => {
-  const room = getStoreRoom({
+  const room = createStore({
     roomId: createUniqueRoomId(),
   });
   addRoom(room);
@@ -163,7 +157,7 @@ export const syncRoom = (roomId: string, playerId: string) => {
 
     if (user) {
       console.logDebug('SYNC_ROOM', user.userId);
-      user.socket.emit('syncRoom', getRoomStateForPlayer(roomState, player));
+      user.socket.emit('syncRoom', getStateForPlayer(roomState, player));
     }
   });
 };

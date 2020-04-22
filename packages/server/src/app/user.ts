@@ -1,4 +1,4 @@
-import { Action as ActionRoom } from '../redux/room/types';
+import { Action as ActionRoom } from '../redux/types';
 
 import {
   createRoom,

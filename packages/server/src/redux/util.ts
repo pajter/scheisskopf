@@ -6,8 +6,8 @@ import {
   getIterator,
   getCardId,
   getCardObj,
-} from '../../../../_shared/util';
-import { CardId } from '../../../../_shared/types';
+} from '../../../_shared/util';
+import { CardId } from '../../../_shared/types';
 
 import { Player, State, Spectator } from './types';
 import { GameErrorCode, GameError } from './error';

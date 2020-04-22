@@ -1,10 +1,10 @@
 import { Store as _Store } from 'redux';
-import { CardId } from '../../../../_shared/types';
+import { CardId, Player, PlayerOpponent } from '../../../../_shared/types';
 
 export interface State {
   currentPlayerUserId: string | null;
   player: Player;
-  otherPlayers: PlayerOther[];
+  opponents: PlayerOpponent[];
   cardsDeckCount: number;
   cardsDiscardedCount: number;
   cardsPile: CardId[];
@@ -22,21 +22,3 @@ export interface State {
 export type Action = { type: 'RESET' } | { type: 'SYNC'; state: State };
 
 export type Store = _Store<State, Action>;
-
-export type MandatoryAction = 'pick';
-
-export interface PlayerBase {
-  userId: string;
-  name: string;
-  cardsOpen: CardId[];
-  cardsClosedCount: number;
-  mandatoryAction?: MandatoryAction;
-}
-
-export interface PlayerOther extends PlayerBase {
-  cardsHandCount: number;
-}
-
-export interface Player extends PlayerBase {
-  cardsHand: CardId[];
-}

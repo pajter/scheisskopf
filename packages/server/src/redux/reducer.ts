@@ -4,20 +4,20 @@ import {
   getCardObj,
   getIterator,
   areCardsTheSameRank,
-} from '../../../../_shared/util';
+} from '../../../_shared/util';
 
 import {
   GameError,
-  GAME_ERROR_SWAP_UNFAIR,
-  GAME_ERROR_NO_CARDS_PLAYED,
-  GAME_ERROR_ILLEGAL_MOVE_CARD_RANKS_DONT_MATCH,
-  GAME_ERROR_ILLEGAL_MOVE_FIRST_TURN_MUST_HAVE_STARTING_CARD,
-  GAME_ERROR_ILLEGAL_MOVE_BLIND,
-  GAME_ERROR_ILLEGAL_MOVE,
-  GAME_ERROR_USER_ALREADY_EXISTS as GAME_ERROR_PLAYER_ALREADY_EXISTS,
-  GAME_ERROR_ILLEGAL_MOVE_CARD_NOT_IN_HAND,
-  GAME_ERROR_ILLEGAL_MOVE_CARD_NOT_IN_OPEN_PILE,
-  GAME_ERROR_COULD_NOT_FIND_STARTING_PLAYER,
+  E_SWAP_UNFAIR,
+  E_NO_CARDS_PLAYED,
+  E_CARD_RANKS_DONT_MATCH,
+  E_FIRST_TURN_MUST_HAVE_STARTING_CARD,
+  E_ILLEGAL_MOVE_BLIND,
+  E_ILLEGAL_MOVE,
+  E_USER_ALREADY_EXISTS,
+  E_CARD_NOT_IN_HAND,
+  E_CARD_NOT_IN_OPEN_PILE,
+  E_COULD_NOT_FIND_STARTING_PLAYER,
 } from './error';
 
 import { State, Action } from './types';
@@ -69,7 +69,7 @@ export const reducer = (
 
     case 'JOIN': {
       if (findPlayerById(action.userId, state.players)) {
-        return getErrorState(state, GAME_ERROR_PLAYER_ALREADY_EXISTS);
+        return getErrorState(state, E_USER_ALREADY_EXISTS);
       }
 
       // Add user to spectators when game is in progress
@@ -179,7 +179,7 @@ export const reducer = (
 
     case 'SWAP': {
       if (action.cardsHand.length !== action.cardsOpen.length) {
-        return getErrorState(state, GAME_ERROR_SWAP_UNFAIR);
+        return getErrorState(state, E_SWAP_UNFAIR);
       }
 
       const player = findPlayerById(action.userId, state.players);
@@ -192,15 +192,12 @@ export const reducer = (
 
       // Check if card is in hand
       if (_.difference(action.cardsHand, playerClone.cardsHand).length) {
-        return getErrorState(state, GAME_ERROR_ILLEGAL_MOVE_CARD_NOT_IN_HAND);
+        return getErrorState(state, E_CARD_NOT_IN_HAND);
       }
 
       // Check if card is in open pile
       if (_.difference(action.cardsOpen, playerClone.cardsOpen).length) {
-        return getErrorState(
-          state,
-          GAME_ERROR_ILLEGAL_MOVE_CARD_NOT_IN_OPEN_PILE
-        );
+        return getErrorState(state, E_CARD_NOT_IN_OPEN_PILE);
       }
 
       // Swap cards
@@ -231,7 +228,7 @@ export const reducer = (
       );
 
       if (!startingPlayer) {
-        return getErrorState(state, GAME_ERROR_COULD_NOT_FIND_STARTING_PLAYER);
+        return getErrorState(state, E_COULD_NOT_FIND_STARTING_PLAYER);
       }
 
       return {
@@ -263,15 +260,12 @@ export const reducer = (
       }
 
       if (action.cards.length === 0) {
-        return getErrorState(state, GAME_ERROR_NO_CARDS_PLAYED);
+        return getErrorState(state, E_NO_CARDS_PLAYED);
       }
 
       // Check that all cards are the same rank
       if (!areCardsTheSameRank(action.cards)) {
-        return getErrorState(
-          state,
-          GAME_ERROR_ILLEGAL_MOVE_CARD_RANKS_DONT_MATCH
-        );
+        return getErrorState(state, E_CARD_RANKS_DONT_MATCH);
       }
 
       // If start of game, the startingCard has to be played
@@ -279,10 +273,7 @@ export const reducer = (
         getTotalTurns(state.players) === 0 &&
         !action.cards.includes(state.startingCard!)
       ) {
-        return getErrorState(
-          state,
-          GAME_ERROR_ILLEGAL_MOVE_FIRST_TURN_MUST_HAVE_STARTING_CARD
-        );
+        return getErrorState(state, E_FIRST_TURN_MUST_HAVE_STARTING_CARD);
       }
 
       // Playing blind card
@@ -294,7 +285,7 @@ export const reducer = (
           ? action.cards[0]
           : undefined;
       if (blindCard) {
-        if (state.error?.code === GAME_ERROR_ILLEGAL_MOVE_BLIND) {
+        if (state.error?.code === E_ILLEGAL_MOVE_BLIND) {
           // We can't make any more moves until the pile has been picked up
           return state;
         }
@@ -317,11 +308,7 @@ export const reducer = (
               tablePile,
               players: updatePlayers(state.players, playerClone),
             },
-            new GameError(
-              GAME_ERROR_ILLEGAL_MOVE_BLIND,
-              blindCard,
-              illegalMoveCard
-            )
+            new GameError(E_ILLEGAL_MOVE_BLIND, blindCard, illegalMoveCard)
           );
         }
       }
@@ -333,7 +320,7 @@ export const reducer = (
         if (illegalMoveCard) {
           return getErrorState(
             state,
-            new GameError(GAME_ERROR_ILLEGAL_MOVE, card, illegalMoveCard)
+            new GameError(E_ILLEGAL_MOVE, card, illegalMoveCard)
           );
         }
 
@@ -436,10 +423,7 @@ export const reducer = (
         action.ownCards.length &&
         !areCardsTheSameRank(action.ownCards)
       ) {
-        return getErrorState(
-          state,
-          GAME_ERROR_ILLEGAL_MOVE_CARD_RANKS_DONT_MATCH
-        );
+        return getErrorState(state, E_CARD_RANKS_DONT_MATCH);
       }
 
       const playerClone = findPlayerById(action.userId, state.players);

@@ -234,39 +234,37 @@ export function HomeRoute() {
       <div className="pad">
         <h2>Players</h2>
 
-        {stateRoom.otherPlayers.map((otherPlayer, idx) => {
+        {stateRoom.opponents.map((opponent, idx) => {
           return (
             <div
               className={`player ${
-                stateRoom.currentPlayerUserId === otherPlayer.userId
+                stateRoom.currentPlayerUserId === opponent.userId
                   ? '-highlight'
                   : ''
               }`}
               key={idx}
             >
               <h3>
-                {otherPlayer.name} <code>{otherPlayer.userId}</code>
+                {opponent.name} <code>{opponent.userId}</code>
               </h3>
 
               <div>
                 <h5>Closed</h5>
-                {Array.from(Array(otherPlayer.cardsClosedCount)).map(
-                  (_, idx) => (
-                    <CardIcon key={idx} />
-                  )
-                )}
+                {Array.from(Array(opponent.cardsClosedCount)).map((_, idx) => (
+                  <CardIcon key={idx} />
+                ))}
               </div>
 
               <div>
                 <h5>Open</h5>
-                {otherPlayer.cardsOpen.map((cardId) => (
+                {opponent.cardsOpen.map((cardId) => (
                   <CardIcon cardId={cardId} />
                 ))}
               </div>
 
               <div>
                 <h5>Hand</h5>
-                {Array.from(Array(otherPlayer.cardsHandCount)).map((_, idx) => (
+                {Array.from(Array(opponent.cardsHandCount)).map((_, idx) => (
                   <CardIcon key={idx} />
                 ))}
               </div>

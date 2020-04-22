@@ -1,5 +1,6 @@
 import { Store as ReduxStore } from 'redux';
-import { CardId } from '../../../../_shared/types';
+
+import { CardId } from '../../../_shared/types';
 
 import { GameError } from './error';
 
@@ -118,7 +119,7 @@ export interface Player extends UserBase {
 
 export interface Spectator extends UserBase {}
 
-export interface BotPlayer extends Player {
+export interface Bot extends Player {
   botSettings: BotSettings;
 }
 

@@ -1,5 +1,10 @@
-import { createStore, applyMiddleware, MiddlewareAPI } from 'redux';
+import {
+  createStore as createStoreRedux,
+  applyMiddleware,
+  MiddlewareAPI,
+} from 'redux';
 import { composeWithDevTools } from 'remote-redux-devtools';
+
 import { reducer, initialState as _initialState } from './reducer';
 import { Store, State, Action } from './types';
 
@@ -31,8 +36,8 @@ const crashReporter = (_store: MiddlewareAPI) => (
   }
 };
 
-export const getStore = (initialState?: Partial<State>): Store => {
-  return createStore(
+export const createStore = (initialState?: Partial<State>): Store => {
+  return createStoreRedux(
     reducer,
     { ..._initialState, ...initialState },
     composeEnhancers(applyMiddleware(logger, crashReporter))
