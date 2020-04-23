@@ -3,34 +3,41 @@ import _ from 'lodash';
 
 import { CardId } from '../../../../_shared/types';
 
-import { useSelector } from '../../redux/hooks';
-import { emit } from '../../socket';
+import { useSelector, useDispatch } from '../../redux/hooks';
 
 import { CardIcon } from '../../components/card-icon';
 import { CardButton } from '../../components/card-button';
 import { Redirect } from 'react-router-dom';
+import { useSocket } from '../../socket';
 
-export function HomeRoute() {
+export function RoomRoute() {
+  const { getEmitter } = useSocket();
+
   const stateRoom = useSelector((state) => state.room);
+  const session = useSelector((state) => state.client.session);
+  const dispatch = useDispatch();
 
-  if (!stateRoom) {
+  if (!(stateRoom && stateRoom.player.userId === session?.userId)) {
     return <Redirect to="/join" />;
   }
 
+  const emitAction = getEmitter('ACTION_ROOM');
+
   const deal = () => {
-    emit('actionRoom', {
+    emitAction({
       type: 'DEAL',
     });
   };
 
   const leave = () => {
-    emit('actionRoom', {
+    emitAction({
       type: 'LEAVE',
     });
+    dispatch({ type: 'LEAVE_ROOM' });
   };
 
   // const swap = (cardsHand: CardId[], cardsOpen: CardId[]) => {
-  //   emit('actionRoom', {
+  //   emitAction({
   //     type: 'SWAP',
   //     cardsHand,
   //     cardsOpen,
@@ -38,14 +45,14 @@ export function HomeRoute() {
   // };
 
   const play = (cardId: CardId) => {
-    emit('actionRoom', {
+    emitAction({
       type: 'PLAY',
       cards: [cardId],
     });
   };
 
   const start = () => {
-    emit('actionRoom', {
+    emitAction({
       type: 'START',
     });
   };
@@ -100,18 +107,16 @@ export function HomeRoute() {
           <div style={{ flex: 1 }}></div>
 
           {stateRoom.state === 'clear-the-pile' && (
-            <button
-              onClick={() => emit('actionRoom', { type: 'CLEAR_THE_PILE' })}
-            >
+            <button onClick={() => emitAction({ type: 'CLEAR_THE_PILE' })}>
               CLEAR THE DECK
             </button>
           )}
 
-          {isPlaying && stateRoom.player.mandatoryAction === 'pick' && (
-            <button onClick={() => emit('actionRoom', { type: 'PICK' })}>
-              PICK
-            </button>
-          )}
+          {isPlaying &&
+            stateRoom.state !== 'clear-the-pile' &&
+            stateRoom.player.mandatoryAction === 'pick' && (
+              <button onClick={() => emitAction({ type: 'PICK' })}>PICK</button>
+            )}
         </div>
       </div>
 

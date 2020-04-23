@@ -1,23 +1,45 @@
 import React from 'react';
 import { Redirect } from 'react-router-dom';
 
-import { emit } from '../../socket';
-import { useSelector } from '../../redux/hooks';
+import { useSelector, useDispatch } from '../../redux/hooks';
+import { Err } from '../../../../_shared/types';
+import { useSocket } from '../../socket';
 
 export function LoginRoute() {
-  const error = useSelector((state) => state.client.error);
+  const { emitAndListen } = useSocket();
+  const dispatch = useDispatch();
+
   const session = useSelector((state) => state.client.session);
 
   const [name, setName] = React.useState('');
+  const [error, setError] = React.useState<Err>();
 
   if (session) {
     return <Redirect to="/" />;
   }
 
   const login = () => {
-    emit('login', {
-      username: name,
-    });
+    emitAndListen(
+      'LOGIN',
+      {
+        username: name,
+      },
+      ({ error, userId, username }) => {
+        if (error) {
+          setError(error);
+        }
+
+        if (userId && username) {
+          dispatch({
+            type: 'SET_SESSION',
+            session: {
+              username,
+              userId,
+            },
+          });
+        }
+      }
+    );
   };
 
   return (

@@ -11,8 +11,14 @@ export const reducer = (
       return null;
     }
     case 'SYNC': {
+      localStorage.setItem('roomId', action.state.roomId);
+
       return action.state;
     }
+    case 'LEAVE_ROOM': {
+      return null;
+    }
   }
+
   return state;
 };

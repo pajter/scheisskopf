@@ -28,6 +28,9 @@ export interface State {
   cardsPile: CardId[];
 }
 
-export type Action = { type: 'RESET' } | { type: 'SYNC'; state: State };
+export type Action =
+  | { type: 'RESET' }
+  | { type: 'SYNC'; state: State }
+  | { type: 'LEAVE_ROOM' };
 
 export type Store = _Store<State, Action>;

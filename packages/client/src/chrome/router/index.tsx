@@ -9,7 +9,7 @@ import {
 
 import { useSelector } from '../../redux/hooks';
 
-import { HomeRoute } from '../../routes/home';
+import { RoomRoute } from '../../routes/room';
 import { LoginRoute } from '../../routes/login';
 import { JoinRoute } from '../../routes/join';
 
@@ -39,6 +39,11 @@ function PrivateRoute({
 }
 
 export function Router() {
+  const loading = useSelector((state) => state.client.loading);
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <BrowserRouter>
       <Switch>
@@ -51,7 +56,7 @@ export function Router() {
         </PrivateRoute>
 
         <PrivateRoute path="/">
-          <HomeRoute />
+          <RoomRoute />
         </PrivateRoute>
       </Switch>
     </BrowserRouter>

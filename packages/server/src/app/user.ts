@@ -1,19 +1,27 @@
-import { Action as ActionRoom, Store } from '../redux/types';
+import { getSocketFunctionsServer } from '../../../_shared/socket';
+import { ActionClient } from '../../../_shared/types';
 
-import { getSocketFunctions } from './socket';
+import { Store, ActionPrivate } from '../redux/types';
+
 import {
   createRoom,
   findRoomForId,
-  syncRoom,
   findRoomForUserId,
-  createUniqueUserId,
-} from './index';
+  syncRoom,
+} from './rooms';
+
+import { createError } from '.';
+
+const createUniqueUserId = (username: string, socketId: string) => {
+  return Buffer.from(username + '(*)' + socketId).toString('base64');
+};
 
 export class ScheissUser {
-  socket: SocketIO.Socket;
+  socket!: SocketIO.Socket;
 
-  emit: ReturnType<typeof getSocketFunctions>['emit'];
-  listen: ReturnType<typeof getSocketFunctions>['listen'];
+  emit!: ReturnType<typeof getSocketFunctionsServer>['emit'];
+  listen!: ReturnType<typeof getSocketFunctionsServer>['listen'];
+  listenAndEmit!: ReturnType<typeof getSocketFunctionsServer>['listenAndEmit'];
 
   username: string;
 
@@ -22,20 +30,24 @@ export class ScheissUser {
   lastPing: Date;
 
   constructor(username: string, socket: SocketIO.Socket) {
-    this.socket = socket;
-
-    const socketFunctions = getSocketFunctions(socket);
-
-    this.emit = socketFunctions.emit;
-    this.listen = socketFunctions.listen;
+    this.initSocket(socket);
 
     this.username = username;
-
     this.userId = createUniqueUserId(username, socket.id);
 
     this.lastPing = new Date();
 
     this.init();
+  }
+
+  private initSocket(socket: SocketIO.Socket) {
+    const socketFunctions = getSocketFunctionsServer(socket);
+
+    this.socket = socket;
+
+    this.emit = socketFunctions.emit;
+    this.listen = socketFunctions.listen;
+    this.listenAndEmit = socketFunctions.listenAndEmit;
   }
 
   private init() {
@@ -48,46 +60,101 @@ export class ScheissUser {
       }
     });
 
-    this.listen('ping', ({ username, userId }) => {
+    this.listen('PING', ({ username, userId }) => {
       if (createUniqueUserId(username, userId) === this.userId) {
-        this.lastPing = new Date();
+        const date = new Date();
 
-        this.emit('ping', {});
+        this.lastPing = date;
+
+        this.emit('PING', { timestamp: +date });
       }
     });
 
+    this.listenAndEmit('CREATE_ROOM', () => {
+      const room = createRoom();
+
+      // Immediately join room, upon which the client gets room the room state
+      this.dispatch({ type: '$JOIN' }, room);
+
+      return { roomId: room.getState().roomId };
+    });
+
+    this.listenAndEmit('JOIN_ROOM', ({ roomId }) => {
+      const room = findRoomForId(roomId);
+      if (!room) {
+        return { error: createError('Unknown room!') };
+      }
+
+      const roomState = room.getState();
+      if (roomState.players.find((player) => player.userId === this.userId)) {
+        return { error: createError('User already in room!') };
+      }
+
+      // Join room
+      this.dispatch({ type: '$JOIN' }, room);
+
+      return { roomId: room.getState().roomId };
+    });
+
+    this.listenAndEmit('REJOIN_ROOM', ({ roomId }) => {
+      const room = findRoomForId(roomId);
+      if (!room) {
+        return { error: createError('Unknown room!') };
+      }
+
+      const roomState = room.getState();
+      if (!roomState.players.find((player) => player.userId === this.userId)) {
+        return { error: createError('User not in room!') };
+      }
+
+      this.dispatch({ type: '$REJOIN' }, room);
+
+      return { roomId };
+    });
+
     // Start listening for room actions
-    this.listen('actionRoom', (action) => {
+    this.listen('ACTION_ROOM', (action) => {
       try {
         this.handleActionRoom(action);
       } catch (err) {
         console.logError(err);
       }
     });
+
+    console.log('user initialized');
   }
 
   resumeSession(socket: SocketIO.Socket) {
-    this.socket = socket;
-
-    const socketFunctions = getSocketFunctions(socket);
-
-    this.emit = socketFunctions.emit;
-    this.listen = socketFunctions.listen;
+    console.log('resuming user session');
+    this.initSocket(socket);
 
     this.init();
   }
 
-  private dispatch(action: ActionRoom, room?: Store) {
-    room = typeof room === 'undefined' ? findRoomForUserId(this.userId!) : room;
+  private dispatch(action: ActionClient | ActionPrivate, room?: Store) {
+    room =
+      typeof room === 'undefined'
+        ? this.userId
+          ? findRoomForUserId(this.userId)
+          : undefined
+        : room;
 
     if (!room) {
       return;
     }
 
     room.dispatch({ ...action, user: this });
+
+    syncRoom(room, this.userId);
   }
 
-  private handleActionRoom = (action: ActionRoom) => {
+  private handleActionRoom = (action: ActionClient) => {
+    // Private actions
+    if (action.type.startsWith('$')) {
+      return;
+    }
+
+    // User must have session before handling room actions
     if (!this.userId) {
       return;
     }
@@ -96,48 +163,11 @@ export class ScheissUser {
 
     // Find existing room for this user
     let room = findRoomForUserId(this.userId);
-
-    // Note: JOIN can also create first before joining
-    if (action.type === 'JOIN') {
-      if (!action.roomId) {
-        console.logDebug('CREATE_ROOM');
-
-        // Create room in server store first
-        room = createRoom();
-
-        // Set new roomId on action
-        action.roomId = room.getState().roomId;
-      } else {
-        // Find room by ID
-        room = findRoomForId(action.roomId);
-
-        // TODO: error handling to signal to a user if a room doesn't exist
-        if (!room) {
-          throw new Error('HANDLE_ACTION_ROOM: No room to join');
-        }
-      }
-    }
-
-    if (action.type === 'REJOIN') {
-      room = findRoomForId(action.roomId);
-
-      if (!room) {
-        throw new Error('HANDLE_ACTION_ROOM: No room to rejoin');
-      }
-
-      // Check if user was actually in room
-      if (!room.getState().players.find((u) => u.userId === this.userId)) {
-        throw new Error('HANDLE_ACTION_ROOM: User was not in requested room');
-      }
-    }
-
     if (!room) {
-      throw new Error('HANDLE_ACTION_ROOM: Room is undefined');
+      return;
     }
 
     this.dispatch(action, room);
-
-    syncRoom(room, this.userId);
   };
 
   private handleDisconnect = (_reason: any) => {
@@ -147,6 +177,6 @@ export class ScheissUser {
       return;
     }
 
-    this.dispatch({ type: 'USER_DISCONNECT' });
+    this.dispatch({ type: '$USER_DISCONNECT' });
   };
 }

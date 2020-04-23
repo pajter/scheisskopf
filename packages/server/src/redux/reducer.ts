@@ -6,8 +6,6 @@ import {
   areCardsTheSameRank,
 } from '../../../_shared/util';
 
-import { ScheissUser } from '../app/user';
-
 import {
   GameError,
   E_SWAP_UNFAIR,
@@ -16,7 +14,6 @@ import {
   E_FIRST_TURN_MUST_HAVE_STARTING_CARD,
   E_ILLEGAL_MOVE_BLIND,
   E_ILLEGAL_MOVE,
-  E_PLAYER_ALREADY_EXISTS,
   E_CARD_NOT_IN_HAND,
   E_CARD_NOT_IN_OPEN_PILE,
   E_COULD_NOT_FIND_STARTING_PLAYER,
@@ -42,6 +39,7 @@ import {
 } from './util';
 
 export const initialState: State = {
+  // Use this string because we will always have a defined room ID string when creating the room
   roomId: '$$EMPTY',
 
   tablePile: [],
@@ -60,21 +58,13 @@ export const initialState: State = {
   error: null,
 };
 
-export const reducer = (
-  state: State = initialState,
-  action: Action & { user: ScheissUser & { userId: string } }
-): State => {
+export const reducer = (state: State = initialState, action: Action): State => {
   switch (action.type) {
-    case 'RESET': {
-      return { ...initialState };
-    }
+    //
+    // PRIVATE ACTIONS
+    // ----------------------------
 
-    case 'JOIN': {
-      const existingPlayer = findPlayerById(action.user.userId, state.players);
-      if (existingPlayer) {
-        return getErrorState(state, E_PLAYER_ALREADY_EXISTS);
-      }
-
+    case '$JOIN': {
       // Add user to spectators when game is in progress
       if (state.state !== 'pre-deal') {
         return {
@@ -95,9 +85,37 @@ export const reducer = (
       };
     }
 
-    case 'REJOIN': {
-      return { ...state };
+    case '$REJOIN': {
+      return {
+        ...state,
+
+        error: null,
+
+        players: updatePlayers(
+          state.players,
+          (user) => ({ ...user, connected: true }),
+          action.user.userId
+        ),
+      };
     }
+
+    case '$USER_DISCONNECT': {
+      return {
+        ...state,
+
+        error: null,
+
+        players: updatePlayers(
+          state.players,
+          (player) => ({ ...player, connected: false }),
+          action.user.userId
+        ),
+      };
+    }
+
+    //
+    // PUBLIC ACTIONS
+    // ----------------------------
 
     case 'LEAVE':
       return {
@@ -110,20 +128,8 @@ export const reducer = (
         ),
       };
 
-    case 'USER_DISCONNECT': {
-      // TODO: global error state?
-
-      return {
-        ...state,
-
-        error: null,
-
-        players: updatePlayers(
-          state.players,
-          (player) => ({ ...player, connected: false }),
-          action.user.userId
-        ),
-      };
+    case 'RESET': {
+      return { ...initialState };
     }
 
     case 'DEAL': {

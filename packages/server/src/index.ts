@@ -6,7 +6,8 @@ import express from 'express';
 import socketIo from 'socket.io';
 
 import './console';
-import { bootScheissApp } from './app';
+
+import { ScheissApp } from './app';
 
 ////////////////////////////
 
@@ -24,7 +25,7 @@ const boot = () => {
     pingInterval: 10000,
   });
 
-  bootScheissApp(io);
+  new ScheissApp(io);
 
   // Serve index.html
   expressApp.get('/', (_, res) => {

@@ -1,8 +1,9 @@
 import { Store as ReduxStore } from 'redux';
 
-import { CardId } from '../../../_shared/types';
+import { CardId, ActionClient } from '../../../_shared/types';
 
 import { GameError } from './error';
+import { ScheissUser } from '../app/user';
 
 export interface State {
   roomId: string;
@@ -52,52 +53,21 @@ export interface State {
   error: GameError | null;
 }
 
-export type Action =
+export type ActionPrivate =
   | {
-      type: 'RESET';
-    }
-  | {
-      type: 'JOIN';
+      type: '$JOIN';
       roomId?: string;
     }
   | {
-      type: 'REJOIN';
-      roomId: string;
+      type: '$REJOIN';
     }
   | {
-      type: 'LEAVE';
-    }
-  | {
-      type: 'USER_DISCONNECT';
-    }
-  | {
-      type: 'DEAL';
-    }
-  | {
-      type: 'SWAP';
-      cardsHand: CardId[];
-      cardsOpen: CardId[];
-    }
-  | {
-      type: 'START';
-    }
-  | {
-      type: 'DRAW';
-    }
-  | {
-      type: 'PLAY';
-      cards: CardId[];
-    }
-  | {
-      type: 'PICK';
-      ownCards?: CardId[];
-    }
-  | {
-      type: 'CLEAR_THE_PILE';
-    }
-  | {
-      type: 'PAUSE';
+      type: '$USER_DISCONNECT';
     };
+
+export type Action = (ActionClient | ActionPrivate) & {
+  user: ScheissUser & { userId: string };
+};
 
 export type Store = ReduxStore<State, Action>;
 
