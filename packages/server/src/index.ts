@@ -42,7 +42,7 @@ const boot = () => {
 
   expressApp.use('/static', express.static(path.join(__dirname, 'static')));
 
-  server.listen(3000, function () {
+  server.listen(3000, 'localhost', function () {
     console.info('Listening on *:3000');
   });
 

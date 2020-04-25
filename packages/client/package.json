@@ -28,7 +28,7 @@
   },
   "scripts": {
     "build": "parcel build src/index.html",
-    "dev": "parcel src/index.html --https --cert ../server/.ssl/server.crt --key ../server/.ssl/server.key",
+    "dev": "parcel src/index.html",
     "lint": "yarn lint:ts",
     "lint:ts": "tsc --noEmit"
   }
