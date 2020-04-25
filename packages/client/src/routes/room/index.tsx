@@ -46,6 +46,7 @@ export function RoomRoute() {
       cardsHand: selectedCardIds.hand,
       cardsOpen: selectedCardIds.open,
     });
+    dispatch({ type: 'CLEAR_CARD_SELECTION' });
   };
 
   const play = () => {
@@ -145,26 +146,28 @@ export function RoomRoute() {
 
         {illegalBlindMove && <h2>SUKKELLLLLL</h2>}
 
-        <div className="pile" style={{ marginTop: '16px' }}>
-          <div className="card-stack -overlap">
-            {stateRoom.cardsPile.map((cardId) => (
-              <CardIcon cardId={cardId} key={cardId} />
-            ))}
-          </div>
+        <div className="scroll" style={{ marginTop: '16px' }}>
+          <div className="pile">
+            <div className="card-stack -overlap">
+              {stateRoom.cardsPile.map((cardId) => (
+                <CardIcon cardId={cardId} key={cardId} />
+              ))}
+            </div>
 
-          <div style={{ flex: 1 }}></div>
+            <div style={{ flex: 1 }}></div>
 
-          {gameState === 'clear-the-pile' && (
-            <button onClick={() => emitAction({ type: 'CLEAR_THE_PILE' })}>
-              CLEAR THE DECK
-            </button>
-          )}
-
-          {isPlaying &&
-            gameState !== 'clear-the-pile' &&
-            (player.mandatoryAction === 'pick' || illegalBlindMove) && (
-              <button onClick={pick}>PICK</button>
+            {gameState === 'clear-the-pile' && (
+              <button onClick={() => emitAction({ type: 'CLEAR_THE_PILE' })}>
+                CLEAR THE DECK
+              </button>
             )}
+
+            {isPlaying &&
+              gameState !== 'clear-the-pile' &&
+              (player.mandatoryAction === 'pick' || illegalBlindMove) && (
+                <button onClick={pick}>PICK</button>
+              )}
+          </div>
         </div>
       </div>
 
@@ -179,7 +182,8 @@ export function RoomRoute() {
         </h2>
 
         {isPlaying &&
-          (player.cardsHand.length > 0 || player.cardsOpen.length > 0) &&
+          ((player.cardsHand.length > 0 && selectedCardIds.hand.length > 0) ||
+            (player.cardsOpen.length > 0 && selectedCardIds.open.length > 0)) &&
           player.mandatoryAction !== 'pick' &&
           gameState === 'playing' && (
             <button
@@ -203,6 +207,29 @@ export function RoomRoute() {
         {!player.isFinished && (
           <>
             <div>
+              <h5>Open</h5>
+              <div className="card-stack -spaced">
+                {player.cardsOpen
+                  .sort()
+                  .reverse()
+                  .map((cardId) => (
+                    <CardButton
+                      key={cardId}
+                      cardId={cardId}
+                      disabled={
+                        gameState == 'pre-game'
+                          ? false
+                          : !isPlaying ||
+                            player.cardsHand.length > 0 ||
+                            gameState === 'clear-the-pile'
+                      }
+                      stack="open"
+                    />
+                  ))}
+              </div>
+            </div>
+
+            <div>
               <h5>Blind</h5>
               <div className="card-stack -spaced">
                 {player.cardsBlind.map((idx, key) =>
@@ -224,29 +251,6 @@ export function RoomRoute() {
                     />
                   )
                 )}
-              </div>
-            </div>
-
-            <div>
-              <h5>Open</h5>
-              <div className="card-stack -spaced">
-                {player.cardsOpen
-                  .sort()
-                  .reverse()
-                  .map((cardId) => (
-                    <CardButton
-                      key={cardId}
-                      cardId={cardId}
-                      disabled={
-                        gameState == 'pre-game'
-                          ? false
-                          : !isPlaying ||
-                            player.cardsHand.length > 0 ||
-                            gameState === 'clear-the-pile'
-                      }
-                      stack="open"
-                    />
-                  ))}
               </div>
             </div>
 
@@ -298,25 +302,29 @@ export function RoomRoute() {
               {!opponent.isFinished && (
                 <>
                   <div>
+                    <div>
+                      <h5>Open</h5>
+                      <div className="card-stack -spaced">
+                        {opponent.cardsOpen
+                          .sort()
+                          .reverse()
+                          .map((cardId) => (
+                            <CardIcon key={cardId} cardId={cardId} />
+                          ))}
+                      </div>
+                    </div>
+
                     <h5>Blind</h5>
                     <div className="card-stack -spaced">
-                      {Array.from(Array(opponent.cardsBlindCount))
-                        .sort()
-                        .map((_, idx) => (
+                      {opponent.cardsBlind.map((_, idx) =>
+                        idx === null ? (
+                          <div style={{ width: '16px', height: '16px' }}>
+                            &nbsp;
+                          </div>
+                        ) : (
                           <CardIcon key={idx} />
-                        ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h5>Open</h5>
-                    <div className="card-stack -spaced">
-                      {opponent.cardsOpen
-                        .sort()
-                        .reverse()
-                        .map((cardId) => (
-                          <CardIcon key={cardId} cardId={cardId} />
-                        ))}
+                        )
+                      )}
                     </div>
                   </div>
 

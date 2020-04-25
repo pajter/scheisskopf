@@ -44,6 +44,7 @@ export interface PlayerBase {
 
   // Open cards are always public
   cardsOpen: CardId[];
+  cardsBlind: (number | null)[];
 
   isFinished: boolean;
   isDealer: boolean;
@@ -51,17 +52,15 @@ export interface PlayerBase {
 
 export interface PlayerServer extends PlayerBase {
   cardsHand?: CardId[];
-  cardsBlind?: CardId[];
 }
 
 export interface PlayerClient extends PlayerBase {
   cardsHand: CardId[];
-  cardsBlind: (number | null)[];
 }
 
 export interface PlayerClientOpponent extends PlayerBase {
   cardsHandCount: number;
-  cardsBlindCount: number;
+  cardsBlind: (number | null)[];
 }
 
 export interface SocketClientEvent {

@@ -81,6 +81,9 @@ const createPlayerBase = (
     // Open cards are always public
     cardsOpen: player.cardsOpen,
 
+    // Blind cards are invisible
+    cardsBlind: player.cardsBlind.map((c, idx) => (c === null ? null : idx)),
+
     mandatoryAction,
   };
 };
@@ -93,9 +96,6 @@ const createPlayerClient = (
     ...createPlayerBase(player, state),
 
     cardsHand: player.cardsHand,
-
-    // Blind cards are invisible
-    cardsBlind: player.cardsBlind.map((c, idx) => (c === null ? null : idx)),
   };
 };
 
@@ -108,7 +108,6 @@ const createPlayerClientOpponent = (
 
     // All cards are invisible
     cardsHandCount: player.cardsHand.length,
-    cardsBlindCount: player.cardsBlind.length,
   };
 };
 
