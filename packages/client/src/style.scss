@@ -52,7 +52,7 @@ button {
   height: $card-height;
   padding: 4px;
 
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 2px solid rgba(0, 0, 0, 0.1);
   box-shadow: 0px 0px 12px 2px inset #00000014;
   border-radius: 4px;
 
@@ -99,9 +99,10 @@ button {
     }
   }
 
-  &.-toggled {
+  &.-selected {
     > .card-icon {
       background-color: #eee;
+      border: 2px solid blueviolet;
     }
   }
 
@@ -111,8 +112,6 @@ button {
 }
 
 .card-stack {
-  max-width: 100%;
-  overflow-x: auto;
   white-space: nowrap;
   display: flex;
   flex-flow: row-reverse;
@@ -222,18 +221,30 @@ button {
 .deck {
   padding: 8px;
   background-color: rgba(0, 0, 0, 0.1);
+
+  h6 {
+    margin-top: 0;
+  }
 }
 
 .discarded {
   padding: 8px;
   background-color: rgba(0, 0, 0, 0.4);
+
+  h6 {
+    margin-top: 0;
+  }
 }
 
 .pile {
   display: flex;
-  padding: 16px;
+  padding: 8px;
   background-color: #93d093;
   align-items: center;
+
+  h6 {
+    margin-top: 0;
+  }
 
   > button {
     margin-left: 8px;
@@ -255,4 +266,19 @@ button {
       color: blue;
     }
   }
+  &.-highlight-finished {
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      color: gray;
+    }
+  }
+}
+
+.scroll {
+  max-width: 100%;
+  overflow: auto;
 }

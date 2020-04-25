@@ -8,6 +8,7 @@ export function JoinRoute() {
   const { emit, emitAndListen } = useSocket();
 
   const room = useSelector((state) => state.room);
+  const session = useSelector((state) => state.client.session);
 
   const [roomId, setRoomId] = React.useState('');
   const [error, setError] = React.useState<Err>();
@@ -33,6 +34,8 @@ export function JoinRoute() {
   return (
     <div className="pad">
       {error && <pre>{error.message}</pre>}
+
+      <h1>Hi {session?.username}</h1>
 
       <button onClick={create}>Create new room</button>
       <br />

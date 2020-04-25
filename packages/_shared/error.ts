@@ -1,4 +1,4 @@
-import { CardId } from '../../../_shared/types';
+import { CardId } from './types';
 
 export const E_SWAP_UNFAIR = 'E_SWAP_UNFAIR' as const;
 export const E_ILLEGAL_MOVE = 'E_ILLEGAL_MOVE' as const;

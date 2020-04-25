@@ -20,6 +20,8 @@ export type CardRank =
 // Card has format `${suit},${rank}`
 export type CardId = string;
 
+export type Stack = 'hand' | 'open' | 'blind';
+
 export interface Session {
   username: string;
   userId: string;
@@ -42,21 +44,24 @@ export interface PlayerBase {
 
   // Open cards are always public
   cardsOpen: CardId[];
+
+  isFinished: boolean;
+  isDealer: boolean;
 }
 
 export interface PlayerServer extends PlayerBase {
   cardsHand?: CardId[];
-  cardsClosed?: CardId[];
+  cardsBlind?: CardId[];
 }
 
 export interface PlayerClient extends PlayerBase {
   cardsHand: CardId[];
-  cardsClosedCount: number;
+  cardsBlind: (number | null)[];
 }
 
 export interface PlayerClientOpponent extends PlayerBase {
   cardsHandCount: number;
-  cardsClosedCount: number;
+  cardsBlindCount: number;
 }
 
 export interface SocketClientEvent {
@@ -103,6 +108,10 @@ export type ActionClient =
   | {
       type: 'PLAY';
       cards: CardId[];
+    }
+  | {
+      type: 'PLAY_BLIND';
+      idx: number;
     }
   | {
       type: 'PICK';

@@ -72,6 +72,9 @@ const createPlayerBase = (
     userId: player.userId,
     name: player.name,
 
+    isFinished: player.isFinished,
+    isDealer: player.isDealer,
+
     connected: true,
     lastPing: new Date(),
 
@@ -91,8 +94,8 @@ const createPlayerClient = (
 
     cardsHand: player.cardsHand,
 
-    // Closed cards are invisible
-    cardsClosedCount: player.cardsClosed.length,
+    // Blind cards are invisible
+    cardsBlind: player.cardsBlind.map((c, idx) => (c === null ? null : idx)),
   };
 };
 
@@ -105,7 +108,7 @@ const createPlayerClientOpponent = (
 
     // All cards are invisible
     cardsHandCount: player.cardsHand.length,
-    cardsClosedCount: player.cardsClosed.length,
+    cardsBlindCount: player.cardsBlind.length,
   };
 };
 

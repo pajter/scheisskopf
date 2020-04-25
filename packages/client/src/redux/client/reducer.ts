@@ -6,6 +6,10 @@ export const initialState: State = {
   session: null,
   error: null,
   loading: true,
+  selectedCardIds: {
+    hand: [],
+    open: [],
+  },
 };
 
 export const reducer = (state: State = initialState, action: Action): State => {
@@ -31,10 +35,43 @@ export const reducer = (state: State = initialState, action: Action): State => {
       return { ...state, session: null };
     }
     case 'SET_ERROR': {
-      return { ...initialState, error: action.error };
+      return { ...state, error: action.error };
     }
     case 'CLEAR_ERROR': {
-      return { ...initialState, error: null };
+      return { ...state, error: null };
+    }
+    case 'SELECT_CARD': {
+      return {
+        ...state,
+        selectedCardIds: {
+          ...state.selectedCardIds,
+          [action.stack]: [
+            ...state.selectedCardIds[action.stack],
+            action.cardId,
+          ],
+        },
+      };
+    }
+    case 'DESELECT_CARD': {
+      const newSelectedCardIds = state.selectedCardIds[action.stack].filter(
+        (cardId) => cardId !== action.cardId
+      );
+      return {
+        ...state,
+        selectedCardIds: {
+          ...state.selectedCardIds,
+          [action.stack]: newSelectedCardIds,
+        },
+      };
+    }
+    case 'CLEAR_CARD_SELECTION': {
+      return {
+        ...state,
+        selectedCardIds: {
+          hand: [],
+          open: [],
+        },
+      };
     }
   }
 

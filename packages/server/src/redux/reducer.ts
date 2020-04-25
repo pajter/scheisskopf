@@ -17,7 +17,7 @@ import {
   E_CARD_NOT_IN_HAND,
   E_CARD_NOT_IN_OPEN_PILE,
   E_COULD_NOT_FIND_STARTING_PLAYER,
-} from './error';
+} from '../../../_shared/error';
 
 import { State, Action } from './types';
 
@@ -32,10 +32,10 @@ import {
   updatePlayers,
   getDeck,
   getIllegalMoveCard,
-  shouldClearThePile,
   getTotalTurns,
   getErrorState,
   createSpectator,
+  assertGameState,
 } from './util';
 
 export const initialState: State = {
@@ -150,10 +150,10 @@ export const reducer = (state: State = initialState, action: Action): State => {
       const startCardHandCount = counts.hand;
 
       // Multiply each by amount of players to get total amount of cards to deal
-      let closed = counts.closed * playerCount;
-      while (closed) {
-        iteratePlayers.next().cardsClosed.push(deck.shift()!);
-        closed--;
+      let blind = counts.blind * playerCount;
+      while (blind) {
+        iteratePlayers.next().cardsBlind.push(deck.shift()!);
+        blind--;
       }
       let open = counts.open * playerCount;
       while (open) {
@@ -288,43 +288,6 @@ export const reducer = (state: State = initialState, action: Action): State => {
         return getErrorState(state, E_FIRST_TURN_MUST_HAVE_STARTING_CARD);
       }
 
-      // Playing blind card
-      const blindCard =
-        playerClone.cardsHand.length === 0 &&
-        playerClone.cardsOpen.length === 0 &&
-        action.cards.length === 1 &&
-        playerClone.cardsClosed.includes(action.cards[0])
-          ? action.cards[0]
-          : undefined;
-      if (blindCard) {
-        if (state.error?.code === E_ILLEGAL_MOVE_BLIND) {
-          // We can't make any more moves until the pile has been picked up
-          return state;
-        }
-
-        const illegalMoveCard = getIllegalMoveCard(blindCard, state.tablePile);
-
-        if (illegalMoveCard) {
-          // Add cards to pile
-          const tablePile = [...state.tablePile, ...action.cards];
-
-          // Remove blind card from closed cards
-          playerClone.cardsClosed = playerClone.cardsClosed.filter(
-            (c) => c !== blindCard
-          );
-          playerClone.turns = playerClone.turns + 1;
-
-          return getErrorState(
-            {
-              ...state,
-              tablePile,
-              players: updatePlayers(state.players, playerClone),
-            },
-            new GameError(E_ILLEGAL_MOVE_BLIND, blindCard, illegalMoveCard)
-          );
-        }
-      }
-
       // Remove cards from player
       for (const card of action.cards) {
         // Check if card can be played
@@ -336,12 +299,8 @@ export const reducer = (state: State = initialState, action: Action): State => {
           );
         }
 
-        // Cards can be removed from all piles
         playerClone.cardsHand = playerClone.cardsHand.filter((c) => c !== card);
         playerClone.cardsOpen = playerClone.cardsOpen.filter((c) => c !== card);
-        playerClone.cardsClosed = playerClone.cardsClosed.filter(
-          (c) => c !== card
-        );
       }
 
       const tableDeck = [...state.tableDeck];
@@ -371,29 +330,17 @@ export const reducer = (state: State = initialState, action: Action): State => {
 
       // Warn: pass new players data because (instead of players still in `state`)
       const nextPlayer = getNextPlayer(playerClone, playersClone, skipPlayers);
-      let nextPlayerUserId = nextPlayer.userId;
-
-      // Check for clear the deck
-      let tableDiscarded = state.tableDiscarded;
 
       // Add cards to pile
       const tablePile = [...state.tablePile, ...action.cards];
 
-      // If only one player left
-      let newGameState = state.state;
-      if (playersClone.filter((player) => !player.isFinished).length === 1) {
-        // A shithead has been crowned!
-        newGameState = 'ended';
-      } else if (shouldClearThePile(tablePile)) {
-        // We check for clear the pile after checking if game is finished
-        // else we would not be able to finish the game after clearing the deck
-        newGameState = 'clear-the-pile';
-
-        if (!playerClone.isFinished) {
-          // Keep same player when clearing the deck
-          nextPlayerUserId = playerClone.userId;
-        }
-      }
+      const { gameState, nextPlayerUserId, players } = assertGameState(
+        state.state,
+        nextPlayer.userId,
+        playersClone,
+        playerClone,
+        tablePile
+      );
 
       // Successful turn
       return {
@@ -401,13 +348,92 @@ export const reducer = (state: State = initialState, action: Action): State => {
 
         error: null,
 
-        state: newGameState,
+        state: gameState,
 
         tablePile,
         tableDeck,
-        tableDiscarded,
 
-        players: playersClone,
+        players,
+        currentPlayerUserId: nextPlayerUserId,
+      };
+    }
+
+    case 'PLAY_BLIND': {
+      // Clone player
+      const playerClone = findPlayerById(action.user.userId, state.players);
+      if (!playerClone) {
+        return state;
+      }
+
+      if (typeof action.idx === 'undefined') {
+        return getErrorState(state, E_NO_CARDS_PLAYED);
+      }
+
+      if (state.error?.code === E_ILLEGAL_MOVE_BLIND) {
+        // We can't make any more moves until the pile has been picked up
+        return state;
+      }
+
+      const blindCard = playerClone.cardsBlind[action.idx];
+      if (blindCard === null) {
+        // Impossible
+        return state;
+      }
+
+      // Remove blind card from player
+      playerClone.cardsBlind[action.idx] = null;
+
+      // Play blind card on pile
+      const tablePile = [...state.tablePile, blindCard];
+
+      playerClone.turns = playerClone.turns + 1;
+
+      const illegalMoveCard = getIllegalMoveCard(blindCard, state.tablePile);
+      if (illegalMoveCard) {
+        return getErrorState(
+          {
+            ...state,
+            tablePile,
+            players: updatePlayers(state.players, playerClone),
+          },
+          new GameError(E_ILLEGAL_MOVE_BLIND, blindCard, illegalMoveCard)
+        );
+      }
+
+      // Player is finished if there are no more cards left
+      if (isPlayerFinished(playerClone)) {
+        playerClone.isFinished = true;
+      }
+
+      // Create all new players before modifying them
+      const playersClone = updatePlayers(state.players, playerClone);
+
+      // Check if player needs to be skipped because of 8 card
+      const skipPlayers = getCardObj(blindCard).rank === 8 ? 1 : 0;
+
+      // Warn: pass new players data because (instead of players still in `state`)
+      const nextPlayer = getNextPlayer(playerClone, playersClone, skipPlayers);
+
+      // Check game state
+      const { gameState, players, nextPlayerUserId } = assertGameState(
+        state.state,
+        nextPlayer.userId,
+        playersClone,
+        playerClone,
+        tablePile
+      );
+
+      // Successful turn
+      return {
+        ...state,
+
+        error: null,
+
+        state: gameState,
+
+        tablePile,
+
+        players,
         currentPlayerUserId: nextPlayerUserId,
       };
     }
@@ -450,13 +476,13 @@ export const reducer = (state: State = initialState, action: Action): State => {
         // Filter cards already in hand (this could happen by accident, we just want to make sure)
         action.ownCards = _.difference(action.ownCards, playerClone.cardsHand);
 
-        // Remove own cards from whatever pile
+        // Remove own cards from whatever stack
         playerClone.cardsOpen = _.difference(
           playerClone.cardsOpen,
           action.ownCards
         );
-        playerClone.cardsClosed = _.difference(
-          playerClone.cardsClosed,
+        playerClone.cardsBlind = _.difference(
+          playerClone.cardsBlind,
           action.ownCards
         );
 

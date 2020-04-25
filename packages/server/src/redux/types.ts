@@ -1,10 +1,17 @@
 import { Store as ReduxStore } from 'redux';
 
 import { CardId, ActionClient } from '../../../_shared/types';
+import { GameError } from '../../../_shared/error';
 
-import { GameError } from './error';
 import { ScheissUser } from '../app/user';
 
+export type GameState =
+  | 'pre-deal'
+  | 'pre-game'
+  | 'playing'
+  | 'paused'
+  | 'clear-the-pile'
+  | 'ended';
 export interface State {
   roomId: string;
 
@@ -42,13 +49,7 @@ export interface State {
 
   spectactors: Spectator[];
 
-  state:
-    | 'pre-deal'
-    | 'pre-game'
-    | 'playing'
-    | 'paused'
-    | 'clear-the-pile'
-    | 'ended';
+  state: GameState;
 
   error: GameError | null;
 }
@@ -79,9 +80,9 @@ interface UserBase {
 }
 
 export interface Player extends UserBase {
-  cardsOpen: CardId[];
-  cardsClosed: CardId[];
   cardsHand: CardId[];
+  cardsOpen: CardId[];
+  cardsBlind: (CardId | null)[];
   isFinished: boolean;
   isDealer: boolean;
   turns: number;

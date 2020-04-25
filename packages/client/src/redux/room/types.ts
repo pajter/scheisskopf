@@ -5,10 +5,12 @@ import {
   CardId,
 } from '../../../../_shared/types';
 
+import { GameError } from '../../../../_shared/error';
+
 export interface State {
   roomId: string;
 
-  error: Error | null;
+  error: GameError | null;
 
   state:
     | 'pre-deal'

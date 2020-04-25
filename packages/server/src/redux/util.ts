@@ -8,9 +8,9 @@ import {
   getCardObj,
 } from '../../../_shared/util';
 import { CardId } from '../../../_shared/types';
+import { GameErrorCode, GameError } from '../../../_shared/error';
 
 import { Player, State, Spectator } from './types';
-import { GameErrorCode, GameError } from './error';
 import { ScheissUser } from '../app/user';
 
 export const createPlayer = (
@@ -18,9 +18,9 @@ export const createPlayer = (
 ): Player => ({
   userId: user.userId,
   name: user.username,
-  cardsClosed: [],
   cardsHand: [],
   cardsOpen: [],
+  cardsBlind: [],
   isFinished: false,
   isDealer: false,
   turns: 0,
@@ -127,21 +127,21 @@ export const findStartingPlayer = (players: Player[]) => {
 
 export const calcCardCounts = (
   playerCount: number
-): { closed: number; open: number; hand: number } => {
+): { blind: number; open: number; hand: number } => {
   // Start at 3 for each
-  let closed = 3;
+  let blind = 3;
   let open = 3;
   let hand = 3;
 
   // Min amount of cards
-  const closedMin = 2;
+  const blindMin = 2;
   const openMin = 1;
   const handMin = 1;
 
   const cardsPerPlayer = 52 / playerCount;
 
   // While the amount of cards we want to deal is greater than the cards available per player
-  while (closed + open + hand > Math.floor(cardsPerPlayer)) {
+  while (blind + open + hand > Math.floor(cardsPerPlayer)) {
     // Subtract cards from hand first
     if (hand > handMin) {
       hand--;
@@ -154,14 +154,14 @@ export const calcCardCounts = (
       continue;
     }
 
-    // Subtract closed cards
-    if (closed > closedMin) {
-      closed--;
+    // Subtract blind cards
+    if (blind > blindMin) {
+      blind--;
       continue;
     }
   }
 
-  return { closed, open, hand };
+  return { blind, open, hand };
 };
 
 export const updatePlayers = (
@@ -186,7 +186,7 @@ export const updatePlayers = (
 };
 
 export const isPlayerFinished = (player: Player): boolean =>
-  player.cardsClosed.length === 0 &&
+  player.cardsBlind.filter((i) => i !== null).length === 0 &&
   player.cardsOpen.length === 0 &&
   player.cardsHand.length === 0;
 
@@ -327,4 +327,34 @@ export const mustPlayerPick = (
 
   // If no legal moves were found in the players' playing pile, player has to pick
   return true;
+};
+
+export const assertGameState = (
+  gameState: State['state'],
+  nextPlayerUserId: string,
+  players: Player[],
+  player: Player,
+  tablePile: CardId[]
+) => {
+  if (players.filter((player) => !player.isFinished).length === 1) {
+    // A shithead has been crowned!
+    gameState = 'ended';
+
+    const playerIdx = players.findIndex((p) => p.userId === player.userId);
+    const nextPlayerIdx = playerIdx > players.length - 1 ? 0 : playerIdx + 1;
+    players.forEach((player) => {
+      player.isDealer = false;
+    });
+    players[nextPlayerIdx].isDealer = true;
+  } else if (shouldClearThePile(tablePile)) {
+    // We check for clear the pile after checking if game is finished
+    // else we would not be able to finish the game after clearing the deck
+    gameState = 'clear-the-pile';
+
+    if (!player.isFinished) {
+      // Keep same player when clearing the deck
+      nextPlayerUserId = player.userId;
+    }
+  }
+  return { gameState, nextPlayerUserId, players };
 };

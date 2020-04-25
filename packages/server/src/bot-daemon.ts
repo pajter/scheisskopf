@@ -120,8 +120,8 @@
 //     }
 //   }
 
-//   if (player.cardsClosed.length) {
-//     const randomBlindCard = _.sample(player.cardsClosed)!;
+//   if (player.cardsBlind.length) {
+//     const randomBlindCard = _.sample(player.cardsBlind)!;
 //     store.dispatch({
 //       type: 'PLAY',
 //       userId: player.userId,
