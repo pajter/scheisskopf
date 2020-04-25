@@ -54,7 +54,7 @@ export const getNextPlayer = (
   skip: number = 0
 ): Player => {
   const currentPlayerIdx = players.findIndex(
-    ({ userId: id }) => id === currentPlayer.userId
+    ({ userId }) => userId === currentPlayer.userId
   );
 
   const iteratePlayers = getIterator([...players]);
@@ -71,11 +71,7 @@ export const getNextPlayer = (
     }
   }
 
-  const nextPlayer = iteratePlayers.get();
-  if (!nextPlayer) {
-    throw new Error('GET_NEXT_PLAYER: Could not find next player');
-  }
-  return { ...nextPlayer };
+  return iteratePlayers.get();
 };
 
 export const findStartingPlayer = (players: Player[]) => {
