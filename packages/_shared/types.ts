@@ -37,6 +37,8 @@ export interface PlayerBase {
   userId: string;
   name: string;
 
+  position: number;
+
   connected: boolean;
   lastPing: Date;
 

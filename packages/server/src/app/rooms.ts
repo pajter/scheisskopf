@@ -67,10 +67,13 @@ const createPlayerBase = (
   if (mustPlayerPick(player, state.tablePile)) {
     mandatoryAction = 'pick';
   }
+  const idx = state.players.findIndex((p) => p.userId === player.userId);
 
   return {
     userId: player.userId,
     name: player.name,
+
+    position: idx,
 
     isFinished: player.isFinished,
     isDealer: player.isDealer,
