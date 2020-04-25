@@ -11,12 +11,18 @@ import { ScheissApp } from './app';
 
 ////////////////////////////
 
+const sslConfig = fs.existsSync(path.join(__dirname, '../.ssl'))
+  ? {
+      key: fs.readFileSync(path.join(__dirname, '../.ssl/server.key'), 'utf8'),
+      cert: fs.readFileSync(path.join(__dirname, '../.ssl/server.crt'), 'utf8'),
+    }
+  : {};
+
 const boot = () => {
   const expressApp = express();
   const server = createServer(
     {
-      key: fs.readFileSync(path.join(__dirname, '../.ssl/server.key'), 'utf8'),
-      cert: fs.readFileSync(path.join(__dirname, '../.ssl/server.crt'), 'utf8'),
+      ...sslConfig,
     },
     expressApp
   );
