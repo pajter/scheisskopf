@@ -110,7 +110,7 @@ const createPlayerClientOpponent = (
     ...createPlayerBase(player, state),
 
     // All cards are invisible
-    cardsHandCount: player.cardsHand.length,
+    cardsHand: player.cardsHand.map(() => null),
   };
 };
 

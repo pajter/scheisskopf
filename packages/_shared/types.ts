@@ -61,8 +61,7 @@ export interface PlayerClient extends PlayerBase {
 }
 
 export interface PlayerClientOpponent extends PlayerBase {
-  cardsHandCount: number;
-  cardsBlind: (number | null)[];
+  cardsHand: null[];
 }
 
 export interface SocketClientEvent {

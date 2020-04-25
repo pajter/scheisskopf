@@ -332,25 +332,35 @@ export const assertGameState = (
   player: Player,
   tablePile: CardId[]
 ) => {
-  if (players.filter((player) => !player.isFinished).length === 1) {
+  const unfinished = players.filter((player) => !player.isFinished);
+  if (
+    // Check if game has ended
+    unfinished.length === 1
+  ) {
     // A shithead has been crowned!
-    gameState = 'ended';
+    const shitheadPlayer = unfinished[0];
 
-    const playerIdx = players.findIndex((p) => p.userId === player.userId);
-    const nextPlayerIdx = playerIdx > players.length - 1 ? 0 : playerIdx + 1;
+    // The shithead will become the dealer
+    const shitHeadPlayerIdx = players.findIndex(
+      (p) => p.userId === shitheadPlayer.userId
+    );
     players.forEach((player) => {
       player.isDealer = false;
     });
-    players[nextPlayerIdx].isDealer = true;
-  } else if (shouldClearThePile(tablePile)) {
-    // We check for clear the pile after checking if game is finished
-    // else we would not be able to finish the game after clearing the deck
+    players[shitHeadPlayerIdx].isDealer = true;
+
+    gameState = 'ended';
+  } else if (
+    // Check for 'clear-the-pile'
+    shouldClearThePile(tablePile)
+  ) {
     gameState = 'clear-the-pile';
 
+    // If the player who clears the pile is not yet finished, they must play again
     if (!player.isFinished) {
-      // Keep same player when clearing the deck
       nextPlayerUserId = player.userId;
     }
   }
+
   return { gameState, nextPlayerUserId, players };
 };

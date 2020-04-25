@@ -331,11 +331,9 @@ export function RoomRoute() {
                   <div className="scroll">
                     <h5>Hand</h5>
                     <div className="card-stack -spaced">
-                      {Array.from(Array(opponent.cardsHandCount)).map(
-                        (_, idx) => (
-                          <CardIcon key={idx} />
-                        )
-                      )}
+                      {opponent.cardsHand.map((_, idx) => (
+                        <CardIcon key={idx} />
+                      ))}
                     </div>
                   </div>
                 </>
