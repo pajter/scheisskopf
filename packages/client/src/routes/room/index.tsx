@@ -10,7 +10,7 @@ import { useSocket } from '../../socket';
 import { PlayerBase } from '../../../../_shared/types';
 
 export function RoomRoute() {
-  const { getEmitter } = useSocket();
+  const { getEmitter, emitAndListen } = useSocket();
 
   const stateRoom = useSelector((state) => state.room);
   const selectedCardIds = useSelector((state) => state.client.selectedCardIds);
@@ -38,6 +38,23 @@ export function RoomRoute() {
       type: 'LEAVE',
     });
     dispatch({ type: 'LEAVE_ROOM' });
+  };
+
+  const logout = () => {
+    // Leave room first
+    emitAction({
+      type: 'LEAVE',
+    });
+
+    // Delete session
+    emitAndListen('DELETE_SESSION', session, () => {
+      localStorage.removeItem('roomId');
+      localStorage.removeItem('username');
+      localStorage.removeItem('userId');
+
+      // Update own store to clear room state
+      dispatch({ type: 'LEAVE_ROOM' });
+    });
   };
 
   const swap = () => {
@@ -119,6 +136,7 @@ export function RoomRoute() {
             allPlayers.length > 1 && <button onClick={deal}>deal</button>}
           {gameState === 'pre-game' && <button onClick={start}>start</button>}
           <button onClick={leave}>leave</button>
+          <button onClick={logout}>sign out</button>
         </div>
 
         <div style={{ display: 'flex' }}>

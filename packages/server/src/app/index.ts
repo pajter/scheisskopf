@@ -1,7 +1,7 @@
 import { Err } from '../../../_shared/types';
 import { getSocketFunctionsServer } from '../../../_shared/socket';
 
-import { findUserByName, addUser, findUserById } from './users';
+import { findUserByName, addUser, findUserById, removeUser } from './users';
 import { ScheissUser } from './user';
 
 export const createError = (msg: string): Err => {
@@ -13,7 +13,7 @@ export const createError = (msg: string): Err => {
 export class ScheissApp {
   constructor(io: SocketIO.Server) {
     io.on('connection', (socket) => {
-      const { listenAndEmit } = getSocketFunctionsServer(socket);
+      const { listenAndEmit, listen } = getSocketFunctionsServer(socket);
 
       listenAndEmit('LOGIN', ({ username }) => {
         console.logDebug('LOGIN', username);
@@ -47,6 +47,14 @@ export class ScheissApp {
 
         // Emit valid session
         return { username, userId };
+      });
+
+      listenAndEmit('DELETE_SESSION', ({ username, userId }) => {
+        console.logDebug('DELETE_SESSION', username);
+
+        removeUser(userId);
+
+        return {};
       });
     });
   }

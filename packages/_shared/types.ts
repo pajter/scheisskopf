@@ -68,6 +68,7 @@ export interface SocketClientEvent {
   LOGIN: { username: string };
   PING: Session;
   CREATE_SESSION: Session;
+  DELETE_SESSION: Session;
   CREATE_ROOM: {};
   JOIN_ROOM: { roomId: string };
   REJOIN_ROOM: { roomId: string };
@@ -78,6 +79,7 @@ export interface SocketServerEvent {
   LOGIN: { error?: Err } & Partial<Session>;
   PING: { timestamp: number };
   CREATE_SESSION: { error?: Err } & Partial<Session>;
+  DELETE_SESSION: {};
   CREATE_ROOM: { error?: Err; roomId?: string };
   JOIN_ROOM: { error?: Err; roomId?: string };
   REJOIN_ROOM: { error?: Err; roomId?: string };
