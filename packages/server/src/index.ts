@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-import { createServer } from 'https';
+import { createServer } from 'http';
 import express from 'express';
 import socketIo from 'socket.io';
 
@@ -11,21 +11,9 @@ import { ScheissApp } from './app';
 
 ////////////////////////////
 
-const sslConfig = fs.existsSync(path.join(__dirname, '../.ssl'))
-  ? {
-      key: fs.readFileSync(path.join(__dirname, '../.ssl/server.key'), 'utf8'),
-      cert: fs.readFileSync(path.join(__dirname, '../.ssl/server.crt'), 'utf8'),
-    }
-  : {};
-
 const boot = () => {
   const expressApp = express();
-  const server = createServer(
-    {
-      ...sslConfig,
-    },
-    expressApp
-  );
+  const server = createServer({}, expressApp);
 
   const io = socketIo(server, {
     pingInterval: 10000,
@@ -42,7 +30,7 @@ const boot = () => {
 
   expressApp.use('/static', express.static(path.join(__dirname, 'static')));
 
-  server.listen(3000, 'localhost', function () {
+  server.listen({ port: 3000, https: false }, function () {
     console.info('Listening on *:3000');
   });
 
