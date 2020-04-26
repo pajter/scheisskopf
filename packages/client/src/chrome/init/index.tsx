@@ -70,10 +70,15 @@ export function Init() {
 
   // Start listening to room actions asap because the server will fire them asap
   listen('ACTION_ROOM', ({ error, state }) => {
+    console.debug('ACTION_ROOM', { error, state });
     if (error) {
       dispatch({
-        type: 'SET_ERROR',
+        type: 'SET_ROOM_ERROR',
         error,
+      });
+    } else {
+      dispatch({
+        type: 'CLEAR_ROOM_ERROR',
       });
     }
 

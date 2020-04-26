@@ -1,32 +1,22 @@
-import { Err } from '../../../_shared/types';
+import { createError } from '../../../_shared/util';
 import { getSocketFunctionsServer } from '../../../_shared/socket';
 
-import { findUserByName, addUser, findUserById, removeUser } from './users';
+import { addUser, findUserById, removeUser } from './users';
 import { ScheissUser } from './user';
-
-export const createError = (msg: string): Err => {
-  const e = new Error(msg);
-
-  return { message: e.message };
-};
 
 export class ScheissApp {
   constructor(io: SocketIO.Server) {
     io.on('connection', (socket) => {
-      const { listenAndEmit, listen } = getSocketFunctionsServer(socket);
+      const { listenAndEmit } = getSocketFunctionsServer(socket);
 
       listenAndEmit('LOGIN', ({ username }) => {
         console.logDebug('LOGIN', username);
-
-        if (findUserByName(username)) {
-          return { error: createError('User already exists!') };
-        }
 
         // Add user to pool
         const user = new ScheissUser(username, socket);
         addUser(user);
 
-        // Create unique user id and return to client
+        // Return to client
         return {
           userId: user.userId,
           username,

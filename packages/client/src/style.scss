@@ -1,6 +1,11 @@
 $card-height: 48px;
 
+html {
+  height: 100%;
+}
+
 body {
+  min-height: 100%;
   font-family: sans-serif;
   padding: 0;
   margin: 0;
@@ -34,6 +39,17 @@ button {
   &:disabled {
     border-color: gray;
   }
+
+  + button {
+    margin-left: 8px;
+    &:first-child {
+      margin-left: 0;
+    }
+  }
+}
+
+code {
+  font-size: inherit;
 }
 
 .card-icon {
@@ -56,6 +72,13 @@ button {
   &.-hidden {
     background-color: #dfdbe5;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='12' viewBox='0 0 20 12'%3E%3Cg fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.4'%3E%3Cpath d='M9.8 12L0 2.2V.8l10 10 10-10v1.4L10.2 12h-.4zm-4 0L0 6.2V4.8L7.2 12H5.8zm8.4 0L20 6.2V4.8L12.8 12h1.4zM9.8 0l.2.2.2-.2h-.4zm-4 0L10 4.2 14.2 0h-1.4L10 2.8 7.2 0H5.8z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+  &.-empty {
+    background-image: none;
+    box-shadow: none;
+    border-color: transparent;
+    background: transparent;
+    pointer-events: none;
   }
 
   > div:first-child {
@@ -137,6 +160,10 @@ button {
       }
     }
   }
+
+  &.-empty {
+    pointer-events: none;
+  }
 }
 
 .user-stacks {
@@ -188,6 +215,15 @@ button {
   }
 }
 
+.footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.2);
+  z-index: 10;
+}
+
 .error {
   @keyframes scale-in-center {
     0% {
@@ -206,29 +242,12 @@ button {
   padding: 8px;
 }
 
-.deck {
-  padding: 8px;
-  background-color: rgba(0, 0, 0, 0.1);
-
-  h6 {
-    margin-top: 0;
-  }
-}
-
-.discarded {
-  padding: 8px;
-  background-color: rgba(0, 0, 0, 0.4);
-
-  h6 {
-    margin-top: 0;
-  }
-}
-
 .pile {
   display: flex;
   padding: 8px;
   background-color: #93d093;
   align-items: center;
+  min-height: 64px;
 
   h6 {
     margin-top: 0;
@@ -241,6 +260,12 @@ button {
       margin-left: 0;
     }
   }
+}
+
+.notify {
+  padding: 8px;
+  text-align: center;
+  font-size: 40px;
 }
 
 .player {

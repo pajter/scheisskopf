@@ -5,6 +5,7 @@ import { State, Action } from './types';
 export const initialState: State = {
   session: null,
   error: null,
+  roomError: null,
   loading: true,
   selectedCardIds: {
     hand: [],
@@ -39,6 +40,12 @@ export const reducer = (state: State = initialState, action: Action): State => {
     }
     case 'CLEAR_ERROR': {
       return { ...state, error: null };
+    }
+    case 'SET_ROOM_ERROR': {
+      return { ...state, roomError: action.error };
+    }
+    case 'CLEAR_ROOM_ERROR': {
+      return { ...state, roomError: null };
     }
     case 'SELECT_CARD': {
       return {

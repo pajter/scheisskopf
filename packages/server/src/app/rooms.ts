@@ -1,10 +1,5 @@
-import {
-  PlayerClient,
-  PlayerClientOpponent,
-  PlayerBase,
-  MandatoryAction,
-} from '../../../_shared/types';
-import { generateRandomString } from '../../../_shared/util';
+import { Player, MandatoryAction } from '../../../_shared/types';
+import { generateRandomString, getIterator } from '../../../_shared/util';
 
 import { State as StateRoom } from '../../../client/src/redux/room/types';
 
@@ -59,10 +54,11 @@ export const findRoomForId = (roomId: string) => {
   return rooms.find((store) => store.getState().roomId === roomId);
 };
 
-const createPlayerBase = (
+const createPlayer = (
   player: PlayerServer,
-  state: StateServer
-): PlayerBase => {
+  state: StateServer,
+  isOpponent: boolean = true
+): Player => {
   let mandatoryAction: MandatoryAction | undefined = undefined;
   if (mustPlayerPick(player, state.tablePile)) {
     mandatoryAction = 'pick';
@@ -77,6 +73,8 @@ const createPlayerBase = (
 
     isFinished: player.isFinished,
     isDealer: player.isDealer,
+    isScheisskopf: player.isScheisskopf,
+    hasStartingCard: player.hasStartingCard,
 
     connected: true,
     lastPing: new Date(),
@@ -84,33 +82,13 @@ const createPlayerBase = (
     // Open cards are always public
     cardsOpen: player.cardsOpen,
 
-    // Blind cards are invisible
+    // Hand cards are invisible (`null`) for opponents
+    cardsHand: player.cardsHand.map((c) => (isOpponent ? null : c)),
+
+    // Blind cards are invisible to everyone, so only a number is passed
     cardsBlind: player.cardsBlind.map((c, idx) => (c === null ? null : idx)),
 
     mandatoryAction,
-  };
-};
-
-const createPlayerClient = (
-  player: PlayerServer,
-  state: StateServer
-): PlayerClient => {
-  return {
-    ...createPlayerBase(player, state),
-
-    cardsHand: player.cardsHand,
-  };
-};
-
-const createPlayerClientOpponent = (
-  player: PlayerServer,
-  state: StateServer
-): PlayerClientOpponent => {
-  return {
-    ...createPlayerBase(player, state),
-
-    // All cards are invisible
-    cardsHand: player.cardsHand.map(() => null),
   };
 };
 
@@ -121,20 +99,28 @@ const getStateRoomForPlayer = (
   state: StateServer,
   player: PlayerServer
 ): StateRoom => {
-  const opponents = state.players.filter(
-    ({ userId }) => userId !== player.userId
-  );
+  // Sort players to put current player at the start
+  const playersIterator = getIterator(state.players);
+  playersIterator.forward(({ userId }) => userId === player.userId);
 
   return {
+    roomId: state.roomId,
+
+    error: state.error,
+
     state: state.state,
-    currentPlayerUserId: state.currentPlayerUserId,
-    player: createPlayerClient(player, state),
-    opponents: opponents.map((p) => createPlayerClientOpponent(p, state)),
+
     cardsDeckCount: state.tableDeck.length,
     cardsDiscardedCount: state.tableDiscarded.length,
     cardsPile: state.tablePile,
-    error: state.error,
-    roomId: state.roomId,
+
+    players: playersIterator.getItems().map((p) => {
+      const isOpponent = p.userId !== player.userId;
+
+      return createPlayer(p, state, isOpponent);
+    }),
+
+    currentPlayerUserId: state.currentPlayerUserId,
   };
 };
 
@@ -143,7 +129,8 @@ export const syncRoom = (room: Store, userId: string) => {
 
   const player = findPlayerById(userId, roomState.players);
   if (!player) {
-    throw new Error('SYNC_ROOM: Can not find player');
+    console.error('SYNC_ROOM: Can not find player');
+    return;
   }
 
   const users = getUsers();

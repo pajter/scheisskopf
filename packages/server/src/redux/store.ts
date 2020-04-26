@@ -17,20 +17,10 @@ const logger = (store: MiddlewareAPI) => (next: (action: Action) => any) => (
   return result;
 };
 
-const crashReporter = (_store: MiddlewareAPI) => (
-  next: (action: Action) => any
-) => (action: Action) => {
-  try {
-    return next(action);
-  } catch (err) {
-    console.logError(err);
-  }
-};
-
 export const createStore = (initialState?: Partial<State>): Store => {
   return createStoreRedux(
     reducer,
     { ..._initialState, ...initialState },
-    applyMiddleware(logger, crashReporter)
+    applyMiddleware(logger)
   );
 };

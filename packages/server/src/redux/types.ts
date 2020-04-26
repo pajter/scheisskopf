@@ -15,6 +15,10 @@ export type GameState =
 export interface State {
   roomId: string;
 
+  state: GameState;
+
+  error: GameError | null;
+
   /**
    * Cards in playing pile
    */
@@ -31,27 +35,18 @@ export interface State {
   tableDiscarded: CardId[];
 
   /**
-   * userId of current player
-   */
-  currentPlayerUserId: string | null;
-
-  /**
    * How many cards should be in each player's hand until the deck runs out.
    */
-  startCardHandCount: number | null;
-
-  /**
-   * Card that starts game (eg. club:4)
-   */
-  startingCard: CardId | null;
+  startCardHandCount: number;
 
   players: Player[];
 
   spectactors: Spectator[];
 
-  state: GameState;
-
-  error: GameError | null;
+  /**
+   * Current player userId
+   */
+  currentPlayerUserId: string;
 }
 
 export type ActionPrivate =
@@ -81,11 +76,16 @@ interface UserBase {
 
 export interface Player extends UserBase {
   cardsHand: CardId[];
-  cardsOpen: CardId[];
+  cardsOpen: (CardId | null)[];
   cardsBlind: (CardId | null)[];
+
+  turns: number;
+
   isFinished: boolean;
   isDealer: boolean;
-  turns: number;
+  isScheisskopf: boolean;
+
+  hasStartingCard?: CardId;
 }
 
 export interface Spectator extends UserBase {}

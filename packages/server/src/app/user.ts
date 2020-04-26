@@ -1,5 +1,6 @@
 import { getSocketFunctionsServer } from '../../../_shared/socket';
 import { ActionClient } from '../../../_shared/types';
+import { createError } from '../../../_shared/util';
 
 import { Store, ActionPrivate } from '../redux/types';
 
@@ -9,8 +10,6 @@ import {
   findRoomForUserId,
   syncRoom,
 } from './rooms';
-
-import { createError } from '.';
 
 const createUniqueUserId = (username: string, socketId: string) => {
   return Buffer.from(username + '(*)' + socketId).toString('base64');
@@ -90,6 +89,14 @@ export class ScheissUser {
         return { error: createError('User already in room!') };
       }
 
+      if (roomState.players.find((player) => player.name === this.username)) {
+        return {
+          error: createError(
+            'There is already a user with this name in the room'
+          ),
+        };
+      }
+
       // Join room
       this.dispatch({ type: '$JOIN' }, room);
 
@@ -113,12 +120,14 @@ export class ScheissUser {
     });
 
     // Start listening for room actions
-    this.listen('ACTION_ROOM', (action) => {
+    this.listenAndEmit('ACTION_ROOM', (action) => {
       try {
         this.handleActionRoom(action);
       } catch (err) {
         console.logError(err);
+        return { error: createError(err.message) };
       }
+      return {};
     });
 
     console.log('user initialized');

@@ -16,7 +16,6 @@ import {
   E_ILLEGAL_MOVE,
   E_CARD_NOT_IN_HAND,
   E_CARD_NOT_IN_OPEN_PILE,
-  E_COULD_NOT_FIND_STARTING_PLAYER,
 } from '../../../_shared/error';
 
 import { State, Action } from './types';
@@ -28,7 +27,6 @@ import {
   getNextPlayer,
   findPlayerById,
   isPlayerFinished,
-  sortPlayerCards,
   updatePlayers,
   getDeck,
   getIllegalMoveCard,
@@ -49,9 +47,8 @@ export const initialState: State = {
   players: [],
   spectactors: [],
 
-  currentPlayerUserId: null,
-  startCardHandCount: null,
-  startingCard: null,
+  currentPlayerUserId: '$$EMPTY',
+  startCardHandCount: -1,
 
   state: 'pre-deal',
 
@@ -81,15 +78,16 @@ export const reducer = (state: State = initialState, action: Action): State => {
 
         error: null,
 
-        players: [...state.players, createPlayer(action.user)],
+        players: [
+          ...state.players,
+          createPlayer(action.user, state.players.length === 0),
+        ],
       };
     }
 
     case '$REJOIN': {
       return {
         ...state,
-
-        error: null,
 
         players: updatePlayers(
           state.players,
@@ -102,8 +100,6 @@ export const reducer = (state: State = initialState, action: Action): State => {
     case '$USER_DISCONNECT': {
       return {
         ...state,
-
-        error: null,
 
         players: updatePlayers(
           state.players,
@@ -138,12 +134,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
 
       const playerCount = state.players.length;
 
-      const playersClone = [...state.players];
-
-      // Set dealer
-      playersClone[
-        playersClone.findIndex(({ userId }) => userId === action.user.userId)
-      ].isDealer = true;
+      let playersClone = [...state.players];
 
       const iteratePlayers = getIterator(playersClone);
       const counts = calcCardCounts(playerCount);
@@ -167,7 +158,14 @@ export const reducer = (state: State = initialState, action: Action): State => {
       }
 
       // Sort players' cards
-      playersClone.forEach(sortPlayerCards);
+      playersClone.forEach((player) => {
+        // Only sort hand and open cards
+        player.cardsHand = player.cardsHand.sort();
+        player.cardsOpen = player.cardsOpen.sort();
+      });
+
+      // Find starting player
+      playersClone = findStartingPlayer(playersClone);
 
       return {
         ...state,
@@ -176,22 +174,20 @@ export const reducer = (state: State = initialState, action: Action): State => {
 
         state: 'pre-game',
 
-        startCardHandCount,
-
-        startingCard: null,
-
         tableDeck: deck,
         tableDiscarded: [],
         tablePile: [],
 
+        startCardHandCount,
+
         players: playersClone,
-        currentPlayerUserId: null,
+        currentPlayerUserId: '$$EMPTY',
       };
     }
 
     case 'SWAP': {
       if (action.cardsHand.length !== action.cardsOpen.length) {
-        return getErrorState(state, E_SWAP_UNFAIR);
+        throw new GameError(E_SWAP_UNFAIR);
       }
 
       const player = findPlayerById(action.user.userId, state.players);
@@ -204,12 +200,12 @@ export const reducer = (state: State = initialState, action: Action): State => {
 
       // Check if card is in hand
       if (_.difference(action.cardsHand, playerClone.cardsHand).length) {
-        return getErrorState(state, E_CARD_NOT_IN_HAND);
+        throw new GameError(E_CARD_NOT_IN_HAND);
       }
 
       // Check if card is in open pile
       if (_.difference(action.cardsOpen, playerClone.cardsOpen).length) {
-        return getErrorState(state, E_CARD_NOT_IN_OPEN_PILE);
+        throw new GameError(E_CARD_NOT_IN_OPEN_PILE);
       }
 
       // Swap cards
@@ -222,8 +218,9 @@ export const reducer = (state: State = initialState, action: Action): State => {
         ...action.cardsHand,
       ];
 
-      // Sort player's cards
-      sortPlayerCards(playerClone);
+      // Only sort hand and open cards
+      playerClone.cardsHand = playerClone.cardsHand.sort();
+      playerClone.cardsOpen = playerClone.cardsOpen.sort();
 
       return {
         ...state,
@@ -231,28 +228,6 @@ export const reducer = (state: State = initialState, action: Action): State => {
         error: null,
 
         players: updatePlayers(state.players, playerClone),
-      };
-    }
-
-    case 'START': {
-      const { startingPlayer, startingCard } = findStartingPlayer(
-        state.players
-      );
-
-      if (!startingPlayer) {
-        return getErrorState(state, E_COULD_NOT_FIND_STARTING_PLAYER);
-      }
-
-      return {
-        ...state,
-
-        error: null,
-
-        currentPlayerUserId: startingPlayer.userId,
-
-        startingCard,
-
-        state: 'playing',
       };
     }
 
@@ -272,20 +247,26 @@ export const reducer = (state: State = initialState, action: Action): State => {
       }
 
       if (action.cards.length === 0) {
-        return getErrorState(state, E_NO_CARDS_PLAYED);
+        throw new GameError(E_NO_CARDS_PLAYED);
       }
 
       // Check that all cards are the same rank
       if (!areCardsTheSameRank(action.cards)) {
-        return getErrorState(state, E_CARD_RANKS_DONT_MATCH);
+        throw new GameError(E_CARD_RANKS_DONT_MATCH);
+      }
+
+      if (getTotalTurns(state.players) === 0) {
+        // Update state when making first play
+        state.state = 'playing';
       }
 
       // If start of game, the startingCard has to be played
       if (
         getTotalTurns(state.players) === 0 &&
-        !action.cards.includes(state.startingCard!)
+        playerClone.hasStartingCard &&
+        !action.cards.includes(playerClone.hasStartingCard)
       ) {
-        return getErrorState(state, E_FIRST_TURN_MUST_HAVE_STARTING_CARD);
+        throw new GameError(E_FIRST_TURN_MUST_HAVE_STARTING_CARD);
       }
 
       // Remove cards from player
@@ -299,8 +280,12 @@ export const reducer = (state: State = initialState, action: Action): State => {
           );
         }
 
+        // Remove cards from hand
         playerClone.cardsHand = playerClone.cardsHand.filter((c) => c !== card);
-        playerClone.cardsOpen = playerClone.cardsOpen.filter((c) => c !== card);
+        // Nullify open cards
+        playerClone.cardsOpen = playerClone.cardsOpen.map((c) =>
+          c === card ? null : c
+        );
       }
 
       const tableDeck = [...state.tableDeck];
@@ -366,7 +351,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
       }
 
       if (typeof action.idx === 'undefined') {
-        return getErrorState(state, E_NO_CARDS_PLAYED);
+        throw new GameError(E_NO_CARDS_PLAYED);
       }
 
       if (state.error?.code === E_ILLEGAL_MOVE_BLIND) {
@@ -461,7 +446,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
         action.ownCards.length &&
         !areCardsTheSameRank(action.ownCards)
       ) {
-        return getErrorState(state, E_CARD_RANKS_DONT_MATCH);
+        throw new GameError(E_CARD_RANKS_DONT_MATCH);
       }
 
       const playerClone = findPlayerById(action.user.userId, state.players);
@@ -477,21 +462,29 @@ export const reducer = (state: State = initialState, action: Action): State => {
         action.ownCards = _.difference(action.ownCards, playerClone.cardsHand);
 
         // Remove own cards from whatever stack
-        playerClone.cardsOpen = _.difference(
-          playerClone.cardsOpen,
-          action.ownCards
-        );
-        playerClone.cardsBlind = _.difference(
-          playerClone.cardsBlind,
-          action.ownCards
-        );
+        action.ownCards.forEach((card) => {
+          const cardOpenIdx = playerClone.cardsOpen.findIndex(
+            (c) => c === card
+          );
+          if (cardOpenIdx >= 0) {
+            // Nullify open card
+            playerClone.cardsOpen[cardOpenIdx] = null;
+          }
+          const cardBlindIdx = playerClone.cardsBlind.findIndex(
+            (c) => c === card
+          );
+          if (cardBlindIdx >= 0) {
+            // Nullify blind card
+            playerClone.cardsBlind[cardBlindIdx] = null;
+          }
+        });
 
         // Add to cards in hand
         playerClone.cardsHand = [...playerClone.cardsHand, ...action.ownCards];
       }
 
       // Sort player's cards
-      sortPlayerCards(playerClone);
+      playerClone.cardsHand = playerClone.cardsHand.sort();
 
       const playersClone = updatePlayers(state.players, playerClone);
 

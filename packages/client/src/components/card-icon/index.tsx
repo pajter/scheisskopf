@@ -10,12 +10,15 @@ const EMOJI = {
   spade: '♠️',
 } as const;
 
-export function CardIcon({ cardId }: { cardId?: CardId }) {
-  const cardObj =
-    typeof cardId === 'undefined' ? undefined : getCardObj(cardId);
+export function CardIcon({ cardId }: { cardId?: CardId | null }) {
+  const cardObj = typeof cardId === 'string' ? getCardObj(cardId) : undefined;
 
   return (
-    <div className={`card-icon ${!cardObj ? '-hidden' : ''}`}>
+    <div
+      className={`card-icon ${typeof cardId === 'undefined' ? '-hidden' : ''} ${
+        cardId === null ? '-empty' : ''
+      }`}
+    >
       {cardObj && (
         <>
           <div>{EMOJI[cardObj.suit]}</div>

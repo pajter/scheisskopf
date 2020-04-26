@@ -5,6 +5,7 @@ import { Err, Session, CardId } from '../../../../_shared/types';
 export interface State {
   session: Session | null;
   error: Err | null;
+  roomError: Err | null;
   loading: boolean;
   selectedCardIds: {
     hand: CardId[];
@@ -19,6 +20,8 @@ export type Action =
   | { type: 'DESTROY_SESSION' }
   | { type: 'SET_ERROR'; error: Err }
   | { type: 'CLEAR_ERROR' }
+  | { type: 'SET_ROOM_ERROR'; error: Err }
+  | { type: 'CLEAR_ROOM_ERROR' }
   | {
       type: 'SELECT_CARD';
       cardId?: CardId;

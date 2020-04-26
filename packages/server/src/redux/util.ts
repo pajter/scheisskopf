@@ -14,16 +14,24 @@ import { Player, State, Spectator } from './types';
 import { ScheissUser } from '../app/user';
 
 export const createPlayer = (
-  user: ScheissUser & { userId: string }
+  user: ScheissUser & { userId: string },
+  isDealer: boolean = false
 ): Player => ({
   userId: user.userId,
   name: user.username,
+
   cardsHand: [],
   cardsOpen: [],
   cardsBlind: [],
-  isFinished: false,
-  isDealer: false,
+
   turns: 0,
+
+  isFinished: false,
+  isDealer,
+  isScheisskopf: false,
+
+  hasStartingCard: undefined,
+
   connected: true,
   lastPing: new Date(),
 });
@@ -33,6 +41,7 @@ export const createSpectator = (
 ): Spectator => ({
   userId: user.userId,
   name: user.username,
+
   connected: true,
   lastPing: new Date(),
 });
@@ -81,27 +90,29 @@ export const findStartingPlayer = (players: Player[]) => {
     [...ranks].filter((r) => r > 3)
   );
 
-  let startingPlayer: Player | undefined;
+  // Prevent infinite loop
+  let n = 10000;
+  while (n > 0) {
+    n--;
 
-  while (!startingPlayer) {
+    const cardId = getCardId({
+      suit: iterateSuits.get(),
+      rank: iterateRanks.get(),
+    });
+
     for (const player of players) {
-      // Note: discuss whether or not it's allowed to have a club 4 in open cards
-
-      // Search in hand only
+      // Search in hand and open only
       if (
-        player.cardsHand.includes(
-          getCardId({ suit: iterateSuits.get(), rank: iterateRanks.get() })
-        )
+        player.cardsHand.includes(cardId) ||
+        player.cardsOpen.includes(cardId)
       ) {
-        startingPlayer = player;
+        player.hasStartingCard = getCardId({
+          suit: iterateSuits.get(),
+          rank: iterateRanks.get(),
+        });
 
-        // Break users loop
-        break;
+        return players;
       }
-    }
-
-    if (startingPlayer) {
-      break;
     }
 
     // If we haven't found it after scanning all users, move on to the next card
@@ -109,16 +120,15 @@ export const findStartingPlayer = (players: Player[]) => {
     if (iterateSuits.curIdx === 0) {
       // Move on to next rank if we restart the suits loop
       iterateRanks.next();
+
+      if (iterateRanks.curIdx === 0) {
+        // Stop! Something went wrong...
+        break;
+      }
     }
   }
 
-  return {
-    startingPlayer: { ...startingPlayer },
-    startingCard: getCardId({
-      suit: iterateSuits.get(),
-      rank: iterateRanks.get(),
-    }),
-  };
+  throw new Error('Could not find starting player?!');
 };
 
 export const calcCardCounts = (
@@ -181,15 +191,12 @@ export const updatePlayers = (
   return playersCopy;
 };
 
-export const isPlayerFinished = (player: Player): boolean =>
-  player.cardsBlind.filter((i) => i !== null).length === 0 &&
-  player.cardsOpen.length === 0 &&
-  player.cardsHand.length === 0;
-
-export const sortPlayerCards = (player: Player): void => {
-  // Only sort hand and open cards
-  player.cardsHand = player.cardsHand.sort();
-  player.cardsOpen = player.cardsOpen.sort();
+export const isPlayerFinished = (player: Player): boolean => {
+  return (
+    player.cardsBlind.filter((c) => c !== null).length === 0 &&
+    player.cardsOpen.filter((c) => c !== null).length === 0 &&
+    player.cardsHand.length === 0
+  );
 };
 
 export const getErrorState = (
@@ -302,19 +309,21 @@ export const mustPlayerPick = (
   player: Player,
   cardsPile: CardId[]
 ): boolean => {
+  const cardsOpen = player.cardsOpen.filter((c) => c !== null) as string[];
+
   // Player must first play from hand before playing from open
-  const playingPile = player.cardsHand.length
+  const playingStack = player.cardsHand.length
     ? player.cardsHand
-    : player.cardsOpen.length
-    ? player.cardsOpen
+    : cardsOpen.length
+    ? cardsOpen
     : [];
 
-  if (!playingPile.length) {
+  if (!playingStack.length) {
     // Player does not need to pick if there are no cards
     return false;
   }
 
-  for (const cardId of playingPile) {
+  for (const cardId of playingStack) {
     if (!getIllegalMoveCard(cardId, cardsPile)) {
       // If a legal move is found, player does NOT have to pick
       return false;
@@ -346,8 +355,10 @@ export const assertGameState = (
     );
     players.forEach((player) => {
       player.isDealer = false;
+      player.isScheisskopf = false;
     });
     players[shitHeadPlayerIdx].isDealer = true;
+    players[shitHeadPlayerIdx].isScheisskopf = true;
 
     gameState = 'ended';
   } else if (

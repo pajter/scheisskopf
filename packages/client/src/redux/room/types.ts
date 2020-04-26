@@ -1,9 +1,5 @@
 import { Store as _Store } from 'redux';
-import {
-  PlayerClient,
-  PlayerClientOpponent,
-  CardId,
-} from '../../../../_shared/types';
+import { Player, CardId } from '../../../../_shared/types';
 
 import { GameError } from '../../../../_shared/error';
 
@@ -20,14 +16,13 @@ export interface State {
     | 'clear-the-pile'
     | 'ended';
 
-  currentPlayerUserId: string | null;
-
-  player: PlayerClient;
-  opponents: PlayerClientOpponent[];
-
   cardsDeckCount: number;
   cardsDiscardedCount: number;
   cardsPile: CardId[];
+
+  players: Player[];
+
+  currentPlayerUserId: string | null;
 }
 
 export type Action =

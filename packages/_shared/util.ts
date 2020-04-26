@@ -1,6 +1,6 @@
 import _ from 'lodash';
 
-import { CardId, CardSuit, CardRank } from './types';
+import { CardId, CardSuit, CardRank, Err } from './types';
 
 export const ranks: CardRank[] = [
   2,
@@ -55,43 +55,51 @@ export const getRankName = (rank: CardRank): string => {
 };
 
 export const getIterator = <T>(src: T[]) => {
-  const handlers: {
+  const eventHandlers: {
     loop: (() => void)[];
   } = {
     loop: [],
   };
 
-  const iterator = {
+  const self = {
     curIdx: 0,
     src,
     on: (event: 'loop', handler: () => void) => {
-      handlers[event].push(handler);
+      eventHandlers[event].push(handler);
     },
     set: (idx: number) => {
-      iterator.curIdx = idx;
+      self.curIdx = idx;
     },
     get: () => {
-      return src[iterator.curIdx];
+      return src[self.curIdx];
+    },
+    getItems: () => {
+      let ret: T[] = [];
+      let i: T = self.get();
+      do {
+        ret.push(i);
+      } while ((i = self.next()) && ret.length !== src.length);
+      return ret;
     },
     next: () => {
-      iterator.curIdx++;
-      if (iterator.curIdx > src.length - 1) {
-        iterator.curIdx = 0;
-        handlers.loop.forEach((f) => f());
+      self.curIdx++;
+      if (self.curIdx > src.length - 1) {
+        self.curIdx = 0;
+        eventHandlers.loop.forEach((f) => f());
       }
-      return iterator.get();
+      return self.get();
     },
     prev: () => {
-      iterator.curIdx--;
-      if (iterator.curIdx < 0) {
-        iterator.curIdx = src.length - 1;
-        handlers.loop.forEach((f) => f());
+      self.curIdx--;
+      if (self.curIdx < 0) {
+        self.curIdx = src.length - 1;
+        eventHandlers.loop.forEach((f) => f());
       }
-      return iterator.get();
+      return self.get();
     },
     forward: (assert: (i: T) => boolean) => {
       let n = 0;
-      while (!assert(iterator.next())) {
+      while (!assert(self.next())) {
         if (n > src.length) {
           break;
         }
@@ -100,7 +108,7 @@ export const getIterator = <T>(src: T[]) => {
     },
     reverse: (assert: (i: T) => boolean) => {
       let n = 0;
-      while (!assert(iterator.prev())) {
+      while (!assert(self.prev())) {
         if (n > src.length) {
           break;
         }
@@ -108,7 +116,7 @@ export const getIterator = <T>(src: T[]) => {
       }
     },
   };
-  return iterator;
+  return self;
 };
 
 export const areCardsTheSameRank = (cards: CardId[]): boolean => {
@@ -163,4 +171,10 @@ export const generateRandomString = (
     ret += _.sample(dict);
   }
   return ret;
+};
+
+export const createError = (msg: string): Err => {
+  const e = new Error(msg);
+
+  return { message: e.message };
 };

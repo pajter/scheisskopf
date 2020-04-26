@@ -33,7 +33,7 @@ export type Err = {
 
 export type MandatoryAction = 'pick';
 
-export interface PlayerBase {
+export interface Player {
   userId: string;
   name: string;
 
@@ -44,24 +44,17 @@ export interface PlayerBase {
 
   mandatoryAction?: MandatoryAction;
 
-  // Open cards are always public
-  cardsOpen: CardId[];
+  // Always public. `null` means already played
+  cardsOpen: (CardId | null)[];
+  // Always hidden. `null` means already played
   cardsBlind: (number | null)[];
+  // Visible only for player. `null` if invisible
+  cardsHand: (CardId | null)[];
 
   isFinished: boolean;
   isDealer: boolean;
-}
-
-export interface PlayerServer extends PlayerBase {
-  cardsHand?: CardId[];
-}
-
-export interface PlayerClient extends PlayerBase {
-  cardsHand: CardId[];
-}
-
-export interface PlayerClientOpponent extends PlayerBase {
-  cardsHand: null[];
+  isScheisskopf: boolean;
+  hasStartingCard?: CardId;
 }
 
 export interface SocketClientEvent {

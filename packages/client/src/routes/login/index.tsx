@@ -7,9 +7,10 @@ import { useSocket } from '../../socket';
 
 export function LoginRoute() {
   const { emitAndListen } = useSocket();
-  const dispatch = useDispatch();
 
   const session = useSelector((state) => state.client.session);
+
+  const dispatch = useDispatch();
 
   const [name, setName] = React.useState('');
   const [error, setError] = React.useState<Err>();
@@ -46,9 +47,10 @@ export function LoginRoute() {
     <div className="pad">
       {error && <pre>{error.message}</pre>}
 
+      <h4>What is your name?</h4>
       <input
         type="text"
-        placeholder="name"
+        placeholder="Name"
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
@@ -57,7 +59,7 @@ export function LoginRoute() {
       <br />
 
       <button disabled={!name} onClick={login}>
-        Login
+        Enter
       </button>
     </div>
   );
