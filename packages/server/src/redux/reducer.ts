@@ -485,6 +485,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
 
       // Sort player's cards
       playerClone.cardsHand = playerClone.cardsHand.sort();
+      playerClone.turns = playersClone.turns + 1;
 
       const playersClone = updatePlayers(state.players, playerClone);
 
