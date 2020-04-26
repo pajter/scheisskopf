@@ -10,22 +10,23 @@ export function CardButton({
   cardId,
   onClick,
   disabled,
+  forceEnabled,
   stack,
 }: {
   cardId?: CardId;
   onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   disabled?: boolean;
   stack?: 'open' | 'hand';
+  forceEnabled?: boolean;
 }) {
   const dispatch = useDispatch();
 
   const selectedCardIds = useSelector((state) =>
     stack ? state.client.selectedCardIds[stack] : []
   );
-  const gameState = useSelector((state) => state.room.state);
 
   // Check whether card can be selected based on existing selection
-  if (cardId && stack && selectedCardIds.length && gameState !== 'pre-game') {
+  if (!forceEnabled && cardId && stack && selectedCardIds.length) {
     const selectedCardIsSameRank =
       getCardObj(selectedCardIds[0]).rank === getCardObj(cardId).rank;
     disabled = disabled || !selectedCardIsSameRank;

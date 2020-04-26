@@ -27,6 +27,7 @@ export function Player(props: { userId: string }) {
   const gameState = stateRoom.state;
   const isOpponent = player.userId !== userId;
   const isPlaying = stateRoom.currentPlayerUserId === player.userId;
+  const canSwap = stateRoom.state === 'pre-deal' || player.turns === 0;
 
   const illegalBlindMove = stateRoom.error?.code === 'E_ILLEGAL_MOVE_BLIND';
 
@@ -131,9 +132,7 @@ export function Player(props: { userId: string }) {
                 <button onClick={pick}>PICK</button>
               )}
 
-            {(gameState === 'pre-game' || player.turns === 0) && (
-              <button onClick={swap}>Swap</button>
-            )}
+            {canSwap && <button onClick={swap}>Swap</button>}
 
             {player.isDealer &&
               playersCount > 1 &&
@@ -172,12 +171,11 @@ export function Player(props: { userId: string }) {
                   <CardButton
                     key={cardId}
                     cardId={cardId}
+                    forceEnabled={canSwap}
                     disabled={
-                      gameState === 'pre-game'
-                        ? false
-                        : !isPlaying ||
-                          gameState === 'clear-the-pile' ||
-                          gameState !== 'playing'
+                      !isPlaying ||
+                      gameState === 'clear-the-pile' ||
+                      gameState !== 'playing'
                     }
                     stack="hand"
                   />
@@ -200,13 +198,12 @@ export function Player(props: { userId: string }) {
                 <CardButton
                   key={cardId}
                   cardId={cardId}
+                  forceEnabled={canSwap}
                   disabled={
                     isOpponent ||
-                    (gameState == 'pre-game'
-                      ? false
-                      : !isPlaying ||
-                        player.cardsHand.length > 0 ||
-                        gameState === 'clear-the-pile')
+                    !isPlaying ||
+                    player.cardsHand.length > 0 ||
+                    gameState === 'clear-the-pile'
                   }
                   stack="open"
                 />
