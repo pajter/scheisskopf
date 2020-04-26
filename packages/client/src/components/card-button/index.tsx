@@ -50,7 +50,7 @@ export function CardButton({
     <button
       className={'card-button' + (isSelected ? ' -selected' : '')}
       onClick={handleClick}
-      disabled={disabled}
+      disabled={forceEnabled === false && disabled}
     >
       <CardIcon cardId={cardId} />
     </button>
