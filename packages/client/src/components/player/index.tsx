@@ -79,6 +79,15 @@ export function Player(props: { userId: string }) {
     });
   };
 
+  const pick = () => {
+    emitAction({ type: 'PICK', ownCards: selectedCardIds.open });
+    dispatch({ type: 'CLEAR_CARD_SELECTION' });
+  };
+
+  const clearThePile = () => {
+    emitAction({ type: 'CLEAR_THE_PILE' });
+  };
+
   return (
     <div
       className={`player pad ${isPlaying ? '-highlight' : ''} ${
@@ -111,6 +120,16 @@ export function Player(props: { userId: string }) {
                 Play
               </button>
             )}
+
+            {gameState === 'clear-the-pile' && (
+              <button onClick={clearThePile}>CLEAR THE DECK</button>
+            )}
+
+            {isPlaying &&
+              gameState !== 'clear-the-pile' &&
+              (player.mandatoryAction === 'pick' || illegalBlindMove) && (
+                <button onClick={pick}>PICK</button>
+              )}
 
             {gameState === 'pre-game' ||
               (player.turns === 0 && <button onClick={swap}>Swap</button>)}
