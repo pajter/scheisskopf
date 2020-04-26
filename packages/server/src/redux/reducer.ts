@@ -133,10 +133,10 @@ export const reducer = (state: State = initialState, action: Action): State => {
       const deck = getDeck(true);
 
       const playerCount = state.players.length;
-
-      const iteratePlayers = getIterator([...state.players]);
       const counts = calcCardCounts(playerCount);
       const startCardHandCount = counts.hand;
+
+      const iteratePlayers = getIterator([...state.players]);
 
       // Multiply each by amount of players to get total amount of cards to deal
       let blind = counts.blind * playerCount;
@@ -158,14 +158,16 @@ export const reducer = (state: State = initialState, action: Action): State => {
       let playersClone = iteratePlayers.getItems();
 
       // Sort players' cards
-      playersClone.forEach((player) => {
+      playersClone.forEach((p) => {
         // Only sort hand and open cards
-        player.cardsHand = player.cardsHand.sort();
-        player.cardsOpen = player.cardsOpen.sort();
+        p.cardsHand = p.cardsHand.sort();
+        p.cardsOpen = p.cardsOpen.sort();
       });
 
       // Find starting player
       playersClone = findStartingPlayer(playersClone);
+
+      const startingPlayer = playersClone.find((p) => p.hasStartingCard)!;
 
       return {
         ...state,
@@ -181,7 +183,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
         startCardHandCount,
 
         players: playersClone,
-        currentPlayerUserId: '$$EMPTY',
+        currentPlayerUserId: startingPlayer.userId,
       };
     }
 
@@ -485,7 +487,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
 
       // Sort player's cards
       playerClone.cardsHand = playerClone.cardsHand.sort();
-      playerClone.turns = playersClone.turns + 1;
+      playerClone.turns = playerClone.turns + 1;
 
       const playersClone = updatePlayers(state.players, playerClone);
 

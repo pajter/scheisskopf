@@ -77,7 +77,7 @@ export const getIterator = <T>(src: T[]) => {
       let ret: T[] = [];
       let i: T = self.get();
       do {
-        ret.push(i);
+        ret.push({ ...i });
       } while ((i = self.next()) && ret.length !== src.length);
       return ret;
     },
