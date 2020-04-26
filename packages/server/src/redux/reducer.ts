@@ -129,6 +129,14 @@ export const reducer = (state: State = initialState, action: Action): State => {
     }
 
     case 'DEAL': {
+      // Remove cards from all players
+      let playersClone = [...state.players];
+      playersClone.forEach((player) => {
+        player.cardsBlind = [];
+        player.cardsHand = [];
+        player.cardsOpen = [];
+      });
+
       // Get shuffled deck
       const deck = getDeck(true);
 
@@ -155,7 +163,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
         hand--;
       }
 
-      let playersClone = iteratePlayers.getItems();
+      playersClone = iteratePlayers.getItems();
 
       // Sort players' cards
       playersClone.forEach((p) => {
