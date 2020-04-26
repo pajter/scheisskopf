@@ -168,6 +168,7 @@ code {
 
 .user-stacks {
   position: relative;
+  margin-bottom: -48px;
 
   > .card-stack {
     &:nth-child(1) {
@@ -285,16 +286,20 @@ code {
     }
   }
   &.-highlight-finished {
-    padding: 0;
-    margin: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-top: 0;
+    margin-bottom: 0;
     h1,
     h2,
     h3,
     h4,
     h5,
     h6 {
-      margin: 0;
-      padding: 0;
+      margin-top: 0;
+      margin-bottom: 0;
+      padding-top: 0;
+      padding-bottom: 0;
       color: gray;
     }
   }
