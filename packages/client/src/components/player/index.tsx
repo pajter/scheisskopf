@@ -131,8 +131,9 @@ export function Player(props: { userId: string }) {
                 <button onClick={pick}>PICK</button>
               )}
 
-            {gameState === 'pre-game' ||
-              (player.turns === 0 && <button onClick={swap}>Swap</button>)}
+            {(gameState === 'pre-game' || player.turns === 0) && (
+              <button onClick={swap}>Swap</button>
+            )}
 
             {player.isDealer &&
               playersCount > 1 &&
