@@ -269,6 +269,11 @@ code {
 }
 
 .player {
+  h2 {
+    margin-top: 8px;
+    margin-bottom: 8px;
+  }
+
   &.-highlight {
     h1,
     h2,

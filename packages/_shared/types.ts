@@ -55,6 +55,8 @@ export interface Player {
   isDealer: boolean;
   isScheisskopf: boolean;
   hasStartingCard?: CardId;
+
+  turns: number;
 }
 
 export interface SocketClientEvent {

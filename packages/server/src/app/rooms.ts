@@ -89,6 +89,8 @@ const createPlayer = (
     cardsBlind: player.cardsBlind.map((c, idx) => (c === null ? null : idx)),
 
     mandatoryAction,
+
+    turns: player.turns,
   };
 };
 

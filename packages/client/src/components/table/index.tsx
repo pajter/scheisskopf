@@ -44,7 +44,11 @@ export function Table() {
         <span>Cards discarded: {stateRoom.cardsDiscardedCount}</span>
       </div>
 
-      {illegalBlindMove && <h2>WHAAA 😛</h2>}
+      {illegalBlindMove && (
+        <div className="pad">
+          <h2>WHAAA 😛</h2>
+        </div>
+      )}
 
       <div className="scroll">
         <div className="pile">

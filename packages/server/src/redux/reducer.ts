@@ -134,9 +134,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
 
       const playerCount = state.players.length;
 
-      let playersClone = [...state.players];
-
-      const iteratePlayers = getIterator(playersClone);
+      const iteratePlayers = getIterator([...state.players]);
       const counts = calcCardCounts(playerCount);
       const startCardHandCount = counts.hand;
 
@@ -156,6 +154,8 @@ export const reducer = (state: State = initialState, action: Action): State => {
         iteratePlayers.next().cardsHand.push(deck.shift()!);
         hand--;
       }
+
+      let playersClone = iteratePlayers.getItems();
 
       // Sort players' cards
       playersClone.forEach((player) => {
