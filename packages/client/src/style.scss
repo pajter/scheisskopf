@@ -189,7 +189,6 @@ code {
 
 .user-stacks {
   position: relative;
-  margin-bottom: -60px;
 
   > .card-stack {
     &:nth-child(1) {
@@ -207,6 +206,7 @@ code {
       position: relative;
       top: -80px;
       z-index: 2;
+      margin-bottom: -60px;
     }
   }
 }
@@ -270,7 +270,7 @@ code {
   background-color: #2e692e;
   background-image: url('./assets//noise.png');
   align-items: center;
-  min-height: 64px;
+  min-height: 96px;
 
   h6 {
     margin-top: 0;
