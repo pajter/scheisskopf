@@ -14,7 +14,7 @@ export function Footer() {
     stateRoom &&
     session &&
     stateRoom?.currentPlayerUserId === session?.userId &&
-    stateRoom.state === 'playing';
+    (stateRoom.state === 'playing' || stateRoom.state === 'pre-game');
 
   React.useEffect(() => {
     if (!isPlaying) {

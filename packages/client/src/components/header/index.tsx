@@ -37,22 +37,20 @@ export const Header = () => {
   };
 
   return (
-    <div className="stick pad">
-      <div style={{ display: 'flex', alignItems: 'center' }}>
-        <h2>{session && session.username}</h2>
+    <div className="stick header">
+      {!stateRoom && <h2>{session && session.username}</h2>}
 
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-          {stateRoom && (
-            <h2>
-              <code>{stateRoom.roomId}</code>
-            </h2>
-          )}
-          {error && <pre>{error.message}</pre>}
-        </div>
-
-        {stateRoom && <button onClick={leave}>Leave room</button>}
-        {session && <button onClick={signOut}>Sign out</button>}
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+        {stateRoom && (
+          <h3>
+            <code>{stateRoom.roomId}</code>
+          </h3>
+        )}
+        {error && <pre>{error.message}</pre>}
       </div>
+
+      {stateRoom && <button onClick={leave}>Leave</button>}
+      {session && <button onClick={signOut}>Sign out</button>}
     </div>
   );
 };
