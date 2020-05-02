@@ -19,7 +19,7 @@ export const Header = () => {
       type: 'LEAVE',
     });
 
-    dispatch({ type: 'LEAVE_ROOM' });
+    dispatch({ type: 'CLEAR_ROOM' });
   };
 
   const signOut = () => {
@@ -30,13 +30,9 @@ export const Header = () => {
 
     // Delete session
     session &&
-      emitAndListen('DELETE_SESSION', session, () => {
-        localStorage.removeItem('roomId');
-        localStorage.removeItem('username');
-        localStorage.removeItem('userId');
-
-        // Update own store to clear room state
-        dispatch({ type: 'LEAVE_ROOM' });
+      emitAndListen('DELETE_SESSION', { sessionId: session.sessionId }, () => {
+        dispatch({ type: 'CLEAR_ROOM' });
+        dispatch({ type: 'DESTROY_SESSION' });
       });
   };
 

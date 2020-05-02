@@ -28,6 +28,6 @@ export interface State {
 export type Action =
   | { type: 'RESET' }
   | { type: 'SYNC'; state: State }
-  | { type: 'LEAVE_ROOM' };
+  | { type: 'CLEAR_ROOM' };
 
 export type Store = _Store<State, Action>;

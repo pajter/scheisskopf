@@ -1,7 +1,7 @@
 import { createError } from '../../../_shared/util';
 import { getSocketFunctionsServer } from '../../../_shared/socket';
 
-import { addUser, findUserById, removeUser } from './users';
+import { addUser, removeUser, findUserBySessionId } from './users';
 import { ScheissUser } from './user';
 
 export class ScheissApp {
@@ -18,31 +18,39 @@ export class ScheissApp {
 
         // Return to client
         return {
-          userId: user.userId,
-          username,
+          session: user.getSession(),
         };
       });
 
-      listenAndEmit('CREATE_SESSION', ({ username, userId }) => {
-        console.logDebug('CREATE_SESSION', username);
+      listenAndEmit('CREATE_SESSION', ({ sessionId }) => {
+        console.logDebug('CREATE_SESSION', sessionId);
 
-        const user = findUserById(userId);
-        if (!(user && user.username === username && user.userId === userId)) {
+        const user = findUserBySessionId(sessionId);
+        if (!user) {
           return {
-            error: createError('Session expired!'),
+            error: createError('Create session failed!'),
           };
         }
 
-        user.resumeSession(socket);
+        const session = user.resumeSession(socket);
 
         // Emit valid session
-        return { username, userId };
+        return {
+          session,
+        };
       });
 
-      listenAndEmit('DELETE_SESSION', ({ username, userId }) => {
-        console.logDebug('DELETE_SESSION', username);
+      listenAndEmit('DELETE_SESSION', ({ sessionId }) => {
+        console.logDebug('DELETE_SESSION', sessionId);
 
-        removeUser(userId);
+        const user = findUserBySessionId(sessionId);
+        if (!user) {
+          return {
+            error: createError('Delete session failed!'),
+          };
+        }
+
+        removeUser(user.userId);
 
         return {};
       });

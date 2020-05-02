@@ -25,6 +25,7 @@ export type Stack = 'hand' | 'open' | 'blind';
 export interface Session {
   username: string;
   userId: string;
+  sessionId: string;
 }
 
 export type Err = {
@@ -61,9 +62,9 @@ export interface Player {
 
 export interface SocketClientEvent {
   LOGIN: { username: string };
-  PING: Session;
-  CREATE_SESSION: Session;
-  DELETE_SESSION: Session;
+  PING: { sessionId: string };
+  CREATE_SESSION: { sessionId: string };
+  DELETE_SESSION: { sessionId: string };
   CREATE_ROOM: {};
   JOIN_ROOM: { roomId: string };
   REJOIN_ROOM: { roomId: string };
@@ -71,9 +72,9 @@ export interface SocketClientEvent {
 }
 
 export interface SocketServerEvent {
-  LOGIN: { error?: Err } & Partial<Session>;
+  LOGIN: { error?: Err; session?: Session };
   PING: { timestamp: number };
-  CREATE_SESSION: { error?: Err } & Partial<Session>;
+  CREATE_SESSION: { error?: Err; session?: Session };
   DELETE_SESSION: {};
   CREATE_ROOM: { error?: Err; roomId?: string };
   JOIN_ROOM: { error?: Err; roomId?: string };

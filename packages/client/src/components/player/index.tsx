@@ -1,12 +1,13 @@
 import React from 'react';
 import _ from 'lodash';
 
+import { Player, CardId } from '../../../../_shared/types';
+
 import { useSelector, useDispatch } from '../../redux/hooks';
 
 import { CardIcon } from '../../components/card-icon';
 import { CardButton } from '../../components/card-button';
 import { useSocket } from '../../socket';
-import { Player } from '../../../../_shared/types';
 
 export function Player(props: { userId: string }) {
   const { getEmitter } = useSocket();
@@ -25,27 +26,51 @@ export function Player(props: { userId: string }) {
   const emitAction = getEmitter('ACTION_ROOM');
 
   const gameState = stateRoom.state;
-  const isOpponent = player.userId !== userId;
-  const isPlaying = stateRoom.currentPlayerUserId === player.userId;
-  const canSwap = stateRoom.state === 'pre-deal' || player.turns === 0;
-
   const illegalBlindMove = stateRoom.error?.code === 'E_ILLEGAL_MOVE_BLIND';
+  const isOpponent = player.userId !== userId;
 
-  const canPlay =
-    stateRoom.error?.code === 'E_ILLEGAL_MOVE_BLIND'
-      ? false
-      : gameState === 'pre-game' && player.hasStartingCard
-      ? true
-      : isPlaying &&
-        player.mandatoryAction !== 'pick' &&
-        gameState === 'playing' &&
-        (player.cardsHand.length > 0 || player.cardsOpen.length > 0);
+  const mayStart =
+    gameState === 'pre-game' && player.hasStartingCard && player.turns === 0;
 
-  const deal = () => {
+  const isPlaying =
+    (stateRoom.currentPlayerUserId === player.userId &&
+      gameState === 'playing') ||
+    mayStart;
+
+  const canSwap =
+    !isOpponent &&
+    (gameState === 'pre-game' ||
+      (gameState === 'playing' && player.turns === 0));
+
+  const playerMustPick = player.mandatoryAction === 'pick' || illegalBlindMove;
+
+  const playableCardsOpen = player.cardsOpen.filter(
+    (c) => c !== null
+  ) as CardId[];
+
+  const canPlay = (): boolean => {
+    if (!isPlaying) {
+      return false;
+    }
+    if (playerMustPick) {
+      return false;
+    }
+    if (isOpponent) {
+      return false;
+    }
+    if (mayStart) {
+      return true;
+    }
+    if (gameState !== 'playing') {
+      return false;
+    }
+    return player.cardsHand.length > 0 || playableCardsOpen.length > 0;
+  };
+
+  const deal = () =>
     emitAction({
       type: 'DEAL',
     });
-  };
 
   const swap = () => {
     emitAction({
@@ -62,6 +87,7 @@ export function Player(props: { userId: string }) {
       : player.cardsOpen.length
       ? selectedCardIds.open
       : null;
+
     if (cards === null) {
       return;
     }
@@ -73,25 +99,22 @@ export function Player(props: { userId: string }) {
     dispatch({ type: 'CLEAR_CARD_SELECTION' });
   };
 
-  const playBlind = (idx: number) => {
+  const playBlind = (idx: number) =>
     emitAction({
       type: 'PLAY_BLIND',
       idx,
     });
-  };
 
   const pick = () => {
     emitAction({ type: 'PICK', ownCards: selectedCardIds.open });
     dispatch({ type: 'CLEAR_CARD_SELECTION' });
   };
 
-  const clearThePile = () => {
-    emitAction({ type: 'CLEAR_THE_PILE' });
-  };
+  const clearThePile = () => emitAction({ type: 'CLEAR_THE_PILE' });
 
   return (
     <div
-      className={`player pad ${isPlaying ? '-highlight' : ''} ${
+      className={`player ${isPlaying ? '-highlight' : ''} ${
         player.isFinished ? '-highlight-finished' : ''
       }`}
     >
@@ -107,13 +130,13 @@ export function Player(props: { userId: string }) {
 
         {!isOpponent && (
           <>
-            {canPlay && (
+            {canPlay() && (
               <button
                 onClick={play}
                 disabled={
                   player.cardsHand.length
                     ? selectedCardIds.hand.length === 0
-                    : player.cardsOpen.filter((c) => c !== null).length
+                    : playableCardsOpen.length
                     ? selectedCardIds.open.length === 0
                     : false
                 }
@@ -126,11 +149,9 @@ export function Player(props: { userId: string }) {
               <button onClick={clearThePile}>CLEAR THE DECK</button>
             )}
 
-            {isPlaying &&
-              gameState !== 'clear-the-pile' &&
-              (player.mandatoryAction === 'pick' || illegalBlindMove) && (
-                <button onClick={pick}>PICK</button>
-              )}
+            {isPlaying && gameState !== 'clear-the-pile' && playerMustPick && (
+              <button onClick={pick}>PICK</button>
+            )}
 
             {canSwap && <button onClick={swap}>Swap</button>}
 
@@ -158,12 +179,16 @@ export function Player(props: { userId: string }) {
       {!player.isFinished && (
         <div className="user-stacks scroll">
           {/* Hand */}
-          <div className="card-stack -spaced">
+          <div
+            className={`card-stack -spaced ${
+              player.cardsHand.length === 0 ? '-empty' : ''
+            }`}
+          >
             {[...player.cardsHand]
               .sort()
               .reverse()
               .map((cardId, idx) => {
-                if (cardId === null) {
+                if (cardId === null || isOpponent) {
                   return <CardIcon key={idx} />;
                 }
 
@@ -171,11 +196,14 @@ export function Player(props: { userId: string }) {
                   <CardButton
                     key={cardId}
                     cardId={cardId}
-                    forceEnabled={canSwap}
+                    verifySelection={!canSwap}
                     disabled={
-                      !isPlaying ||
-                      gameState === 'clear-the-pile' ||
-                      gameState !== 'playing'
+                      canSwap
+                        ? false
+                        : !isPlaying ||
+                          playerMustPick ||
+                          gameState === 'clear-the-pile' ||
+                          gameState !== 'playing'
                     }
                     stack="hand"
                   />
@@ -186,36 +214,48 @@ export function Player(props: { userId: string }) {
           {/* Open */}
           <div
             className={`card-stack -spaced ${
-              player.cardsOpen.filter((c) => c !== null).length === 0
-                ? '-empty'
-                : ''
+              playableCardsOpen.length === 0 ? '-empty' : ''
             }`}
           >
-            {_.reverse([...player.cardsOpen]).map((cardId, idx) =>
-              cardId === null ? (
-                <CardIcon key={idx} cardId={null} />
-              ) : (
+            {_.reverse([...player.cardsOpen]).map((cardId, idx) => {
+              if (cardId === null || isOpponent) {
+                return <CardIcon key={idx} cardId={cardId} />;
+              }
+
+              return (
                 <CardButton
                   key={cardId}
                   cardId={cardId}
-                  forceEnabled={canSwap}
+                  verifySelection={!canSwap}
                   disabled={
-                    isOpponent ||
-                    !isPlaying ||
-                    player.cardsHand.length > 0 ||
-                    gameState === 'clear-the-pile'
+                    canSwap
+                      ? false
+                      : isOpponent ||
+                        !isPlaying ||
+                        playerMustPick ||
+                        player.cardsHand.length > 0 ||
+                        gameState === 'clear-the-pile'
                   }
                   stack="open"
                 />
-              )
-            )}
+              );
+            })}
           </div>
 
           {/* Blind */}
-          <div className="card-stack -spaced">
+          <div
+            className={`card-stack -spaced ${
+              player.cardsBlind.length === 0 ? '-empty' : ''
+            }`}
+          >
             {player.cardsBlind.map((idx, key) => {
-              if (idx === null) {
-                return <CardIcon key={key} cardId={null} />;
+              if (idx === null || isOpponent) {
+                return (
+                  <CardIcon
+                    key={key}
+                    cardId={idx === null ? null : undefined}
+                  />
+                );
               }
 
               return (
@@ -225,9 +265,9 @@ export function Player(props: { userId: string }) {
                   disabled={
                     isOpponent ||
                     !isPlaying ||
-                    player.cardsOpen.filter((c) => c !== null).length > 0 ||
+                    playerMustPick ||
+                    playableCardsOpen.length > 0 ||
                     player.cardsHand.length > 0 ||
-                    illegalBlindMove ||
                     gameState === 'clear-the-pile'
                   }
                 />

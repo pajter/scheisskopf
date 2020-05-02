@@ -1,6 +1,7 @@
 import { getSocketFunctionsServer } from '../../../_shared/socket';
-import { ActionClient } from '../../../_shared/types';
-import { createError } from '../../../_shared/util';
+import { ActionClient, Session } from '../../../_shared/types';
+import { createError, generateRandomString } from '../../../_shared/util';
+import { pbkdf2Sync } from 'crypto';
 
 import { Store, ActionPrivate } from '../redux/types';
 
@@ -11,8 +12,18 @@ import {
   syncRoom,
 } from './rooms';
 
-const createUniqueUserId = (username: string, socketId: string) => {
-  return Buffer.from(username + '(*)' + socketId).toString('base64');
+const createUniqueUserId = (
+  username: string,
+  socketId: string,
+  salt: string
+) => {
+  const str = pbkdf2Sync(username + '(*)' + socketId, salt, 100, 32, 'sha512');
+  return Buffer.from(str).toString('base64');
+};
+
+const createUniqueSessionId = (userId: string, salt: string) => {
+  const str = pbkdf2Sync(userId, salt, 100, 32, 'sha512');
+  return Buffer.from(str).toString('base64');
 };
 
 export class ScheissUser {
@@ -23,8 +34,9 @@ export class ScheissUser {
   listenAndEmit!: ReturnType<typeof getSocketFunctionsServer>['listenAndEmit'];
 
   username: string;
-
+  salt: string;
   userId: string;
+  sessionId!: string;
 
   lastPing: Date;
 
@@ -32,7 +44,8 @@ export class ScheissUser {
     this.initSocket(socket);
 
     this.username = username;
-    this.userId = createUniqueUserId(username, socket.id);
+    this.salt = generateRandomString(6);
+    this.userId = createUniqueUserId(username, socket.id, this.salt);
 
     this.lastPing = new Date();
 
@@ -50,6 +63,8 @@ export class ScheissUser {
   }
 
   private init() {
+    this.sessionId = createUniqueSessionId(this.userId, this.salt);
+
     // Listen for socket disconnect
     this.socket.on('disconnect', (reason) => {
       try {
@@ -59,14 +74,16 @@ export class ScheissUser {
       }
     });
 
-    this.listen('PING', ({ username, userId }) => {
-      if (createUniqueUserId(username, userId) === this.userId) {
-        const date = new Date();
-
-        this.lastPing = date;
-
-        this.emit('PING', { timestamp: +date });
+    this.listen('PING', ({ sessionId }) => {
+      if (this.sessionId !== sessionId) {
+        return;
       }
+
+      const date = new Date();
+
+      this.lastPing = date;
+
+      this.emit('PING', { timestamp: +date });
     });
 
     this.listenAndEmit('CREATE_ROOM', () => {
@@ -89,6 +106,7 @@ export class ScheissUser {
         return { error: createError('User already in room!') };
       }
 
+      console.log(roomState.players);
       if (roomState.players.find((player) => player.name === this.username)) {
         return {
           error: createError(
@@ -133,11 +151,24 @@ export class ScheissUser {
     console.log('user initialized');
   }
 
-  resumeSession(socket: SocketIO.Socket) {
+  resumeSession(socket: SocketIO.Socket): Session | undefined {
     console.log('resuming user session');
     this.initSocket(socket);
 
     this.init();
+
+    return this.getSession();
+  }
+
+  getSession(): Session | undefined {
+    if (!this.sessionId) {
+      return;
+    }
+    return {
+      username: this.username,
+      userId: this.userId,
+      sessionId: this.sessionId,
+    };
   }
 
   private dispatch(action: ActionClient | ActionPrivate, room?: Store) {
@@ -154,7 +185,7 @@ export class ScheissUser {
 
     room.dispatch({ ...action, user: this });
 
-    syncRoom(room, this.userId);
+    syncRoom(room);
   }
 
   private handleActionRoom = (action: ActionClient) => {
@@ -164,11 +195,11 @@ export class ScheissUser {
     }
 
     // User must have session before handling room actions
-    if (!this.userId) {
+    if (!this.sessionId) {
       return;
     }
 
-    console.logDebug('HANDLE_ACTION_ROOM', this.userId);
+    console.logDebug('HANDLE_ACTION_ROOM', this.sessionId);
 
     // Find existing room for this user
     let room = findRoomForUserId(this.userId);

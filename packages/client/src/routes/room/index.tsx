@@ -23,9 +23,13 @@ export function RoomRoute() {
   return (
     <>
       <Table />
-      {playerUserIds.map((playerUserId) => (
-        <Player key={playerUserId} userId={playerUserId} />
-      ))}
+      <div className="pad">
+        {playerUserIds.length === 1 && <h1>Waiting for players...</h1>}
+
+        {playerUserIds.map((playerUserId) => (
+          <Player key={playerUserId} userId={playerUserId} />
+        ))}
+      </div>
     </>
   );
 }

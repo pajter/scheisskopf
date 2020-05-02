@@ -129,9 +129,11 @@ export const reducer = (state: State = initialState, action: Action): State => {
     }
 
     case 'DEAL': {
+      // Clone
+      let players = state.players.map((p) => ({ ...p }));
+
       // Remove cards from all players
-      let playersClone = [...state.players];
-      playersClone.forEach((player) => {
+      players.forEach((player) => {
         player.cardsBlind = [];
         player.cardsHand = [];
         player.cardsOpen = [];
@@ -140,11 +142,11 @@ export const reducer = (state: State = initialState, action: Action): State => {
       // Get shuffled deck
       const deck = getDeck(true);
 
-      const playerCount = state.players.length;
+      const playerCount = players.length;
       const counts = calcCardCounts(playerCount);
       const startCardHandCount = counts.hand;
 
-      const iteratePlayers = getIterator([...state.players]);
+      const iteratePlayers = getIterator(players);
 
       // Multiply each by amount of players to get total amount of cards to deal
       let blind = counts.blind * playerCount;
@@ -163,19 +165,20 @@ export const reducer = (state: State = initialState, action: Action): State => {
         hand--;
       }
 
-      playersClone = iteratePlayers.getItems();
+      // Refresh players from iterator
+      players = iteratePlayers.getItems();
 
       // Sort players' cards
-      playersClone.forEach((p) => {
+      players.forEach((p) => {
         // Only sort hand and open cards
         p.cardsHand = p.cardsHand.sort();
         p.cardsOpen = p.cardsOpen.sort();
       });
 
       // Find starting player
-      playersClone = findStartingPlayer(playersClone);
+      players = findStartingPlayer(players);
 
-      const startingPlayer = playersClone.find((p) => p.hasStartingCard)!;
+      const startingPlayer = players.find((p) => p.hasStartingCard)!;
 
       return {
         ...state,
@@ -190,7 +193,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
 
         startCardHandCount,
 
-        players: playersClone,
+        players,
         currentPlayerUserId: startingPlayer.userId,
       };
     }
@@ -200,44 +203,44 @@ export const reducer = (state: State = initialState, action: Action): State => {
         throw new GameError(E_SWAP_UNFAIR);
       }
 
-      const player = findPlayerById(action.user.userId, state.players);
+      let player = findPlayerById(action.user.userId, state.players);
       if (!player) {
         return state;
       }
 
       // Clone player
-      const playerClone = { ...player };
+      player = { ...player };
 
       // Check if card is in hand
-      if (_.difference(action.cardsHand, playerClone.cardsHand).length) {
+      if (_.difference(action.cardsHand, player.cardsHand).length) {
         throw new GameError(E_CARD_NOT_IN_HAND);
       }
 
       // Check if card is in open pile
-      if (_.difference(action.cardsOpen, playerClone.cardsOpen).length) {
+      if (_.difference(action.cardsOpen, player.cardsOpen).length) {
         throw new GameError(E_CARD_NOT_IN_OPEN_PILE);
       }
 
       // Swap cards
-      playerClone.cardsHand = [
-        ..._.difference(playerClone.cardsHand, action.cardsHand),
+      player.cardsHand = [
+        ..._.difference(player.cardsHand, action.cardsHand),
         ...action.cardsOpen,
       ];
-      playerClone.cardsOpen = [
-        ..._.difference(playerClone.cardsOpen, action.cardsOpen),
+      player.cardsOpen = [
+        ..._.difference(player.cardsOpen, action.cardsOpen),
         ...action.cardsHand,
       ];
 
       // Only sort hand and open cards
-      playerClone.cardsHand = playerClone.cardsHand.sort();
-      playerClone.cardsOpen = playerClone.cardsOpen.sort();
+      player.cardsHand = player.cardsHand.sort();
+      player.cardsOpen = player.cardsOpen.sort();
 
       return {
         ...state,
 
         error: null,
 
-        players: updatePlayers(state.players, playerClone),
+        players: updatePlayers(state.players, player),
       };
     }
 
@@ -251,10 +254,11 @@ export const reducer = (state: State = initialState, action: Action): State => {
 
     case 'PLAY': {
       // Clone player
-      const playerClone = findPlayerById(action.user.userId, state.players);
-      if (!playerClone) {
+      let player = findPlayerById(action.user.userId, state.players);
+      if (!player) {
         return state;
       }
+      player = { ...player };
 
       if (action.cards.length === 0) {
         throw new GameError(E_NO_CARDS_PLAYED);
@@ -273,13 +277,12 @@ export const reducer = (state: State = initialState, action: Action): State => {
       // If start of game, the startingCard has to be played
       if (
         getTotalTurns(state.players) === 0 &&
-        playerClone.hasStartingCard &&
-        !action.cards.includes(playerClone.hasStartingCard)
+        player.hasStartingCard &&
+        !action.cards.includes(player.hasStartingCard)
       ) {
         throw new GameError(E_FIRST_TURN_MUST_HAVE_STARTING_CARD);
       }
 
-      // Remove cards from player
       for (const card of action.cards) {
         // Check if card can be played
         const illegalMoveCard = getIllegalMoveCard(card, state.tablePile);
@@ -291,40 +294,37 @@ export const reducer = (state: State = initialState, action: Action): State => {
         }
 
         // Remove cards from hand
-        playerClone.cardsHand = playerClone.cardsHand.filter((c) => c !== card);
+        player.cardsHand = player.cardsHand.filter((c) => c !== card);
         // Nullify open cards
-        playerClone.cardsOpen = playerClone.cardsOpen.map((c) =>
-          c === card ? null : c
-        );
+        player.cardsOpen = player.cardsOpen.map((c) => (c === card ? null : c));
       }
 
-      const tableDeck = [...state.tableDeck];
-
       // Add cards back into players hand while there are cards in the deck and the player doesn't have enough in hand
+      const tableDeck = [...state.tableDeck];
       while (
         tableDeck.length &&
-        playerClone.cardsHand.length < state.startCardHandCount!
+        player.cardsHand.length < state.startCardHandCount!
       ) {
-        playerClone.cardsHand.push(tableDeck.shift()!);
+        player.cardsHand.push(tableDeck.shift()!);
       }
 
       // Increase player turns
-      playerClone.turns = playerClone.turns + 1;
+      player.turns = player.turns + 1;
 
       // Player is finished if there are no more cards left
-      if (isPlayerFinished(playerClone)) {
-        playerClone.isFinished = true;
+      if (isPlayerFinished(player)) {
+        player.isFinished = true;
       }
 
-      // Create all new players before modifying them
-      const playersClone = updatePlayers(state.players, playerClone);
+      // Create new players before modifying them
+      const playersClone = updatePlayers(state.players, player);
 
       // Check how many players are skipped by counting number of 8 cards played
       const skipPlayers = action.cards.filter((c) => getCardObj(c).rank === 8)
         .length;
 
-      // Warn: pass new players data because (instead of players still in `state`)
-      const nextPlayer = getNextPlayer(playerClone, playersClone, skipPlayers);
+      // Warn: pass new players data
+      const nextPlayer = getNextPlayer(player, playersClone, skipPlayers);
 
       // Add cards to pile
       const tablePile = [...state.tablePile, ...action.cards];
@@ -333,7 +333,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
         state.state,
         nextPlayer.userId,
         playersClone,
-        playerClone,
+        player,
         tablePile
       );
 
@@ -355,8 +355,8 @@ export const reducer = (state: State = initialState, action: Action): State => {
 
     case 'PLAY_BLIND': {
       // Clone player
-      const playerClone = findPlayerById(action.user.userId, state.players);
-      if (!playerClone) {
+      let player = findPlayerById(action.user.userId, state.players);
+      if (!player) {
         return state;
       }
 
@@ -369,19 +369,19 @@ export const reducer = (state: State = initialState, action: Action): State => {
         return state;
       }
 
-      const blindCard = playerClone.cardsBlind[action.idx];
+      const blindCard = player.cardsBlind[action.idx];
       if (blindCard === null) {
         // Impossible
         return state;
       }
 
-      // Remove blind card from player
-      playerClone.cardsBlind[action.idx] = null;
+      // Remove blind card from player (nullify)
+      player.cardsBlind[action.idx] = null;
 
-      // Play blind card on pile
+      // Put blind card on pile
       const tablePile = [...state.tablePile, blindCard];
 
-      playerClone.turns = playerClone.turns + 1;
+      player.turns = player.turns + 1;
 
       const illegalMoveCard = getIllegalMoveCard(blindCard, state.tablePile);
       if (illegalMoveCard) {
@@ -389,32 +389,32 @@ export const reducer = (state: State = initialState, action: Action): State => {
           {
             ...state,
             tablePile,
-            players: updatePlayers(state.players, playerClone),
+            players: updatePlayers(state.players, player),
           },
           new GameError(E_ILLEGAL_MOVE_BLIND, blindCard, illegalMoveCard)
         );
       }
 
       // Player is finished if there are no more cards left
-      if (isPlayerFinished(playerClone)) {
-        playerClone.isFinished = true;
+      if (isPlayerFinished(player)) {
+        player.isFinished = true;
       }
 
       // Create all new players before modifying them
-      const playersClone = updatePlayers(state.players, playerClone);
+      const playersClone = updatePlayers(state.players, player);
 
       // Check if player needs to be skipped because of 8 card
       const skipPlayers = getCardObj(blindCard).rank === 8 ? 1 : 0;
 
       // Warn: pass new players data because (instead of players still in `state`)
-      const nextPlayer = getNextPlayer(playerClone, playersClone, skipPlayers);
+      const nextPlayer = getNextPlayer(player, playersClone, skipPlayers);
 
       // Check game state
-      const { gameState, players, nextPlayerUserId } = assertGameState(
+      const { gameState, nextPlayerUserId, players } = assertGameState(
         state.state,
         nextPlayer.userId,
         playersClone,
-        playerClone,
+        player,
         tablePile
       );
 
@@ -459,47 +459,39 @@ export const reducer = (state: State = initialState, action: Action): State => {
         throw new GameError(E_CARD_RANKS_DONT_MATCH);
       }
 
-      const playerClone = findPlayerById(action.user.userId, state.players);
-      if (!playerClone) {
+      const player = findPlayerById(action.user.userId, state.players);
+      if (!player) {
         return state;
       }
 
       // Take the (shit)pile
-      playerClone.cardsHand = [...playerClone.cardsHand, ...state.tablePile];
+      player.cardsHand = [...player.cardsHand, ...state.tablePile];
 
       if (action.ownCards && action.ownCards.length) {
         // Filter cards already in hand (this could happen by accident, we just want to make sure)
-        action.ownCards = _.difference(action.ownCards, playerClone.cardsHand);
+        action.ownCards = _.difference(action.ownCards, player.cardsHand);
 
-        // Remove own cards from whatever stack
-        action.ownCards.forEach((card) => {
-          const cardOpenIdx = playerClone.cardsOpen.findIndex(
-            (c) => c === card
-          );
-          if (cardOpenIdx >= 0) {
-            // Nullify open card
-            playerClone.cardsOpen[cardOpenIdx] = null;
+        // Remove own cards from open stack
+        player.cardsOpen = player.cardsOpen.map((c) => {
+          if (c && action.ownCards!.includes(c)) {
+            // Nullify
+            return null;
           }
-          const cardBlindIdx = playerClone.cardsBlind.findIndex(
-            (c) => c === card
-          );
-          if (cardBlindIdx >= 0) {
-            // Nullify blind card
-            playerClone.cardsBlind[cardBlindIdx] = null;
-          }
+          return c;
         });
 
         // Add to cards in hand
-        playerClone.cardsHand = [...playerClone.cardsHand, ...action.ownCards];
+        player.cardsHand = [...player.cardsHand, ...action.ownCards];
       }
 
       // Sort player's cards
-      playerClone.cardsHand = playerClone.cardsHand.sort();
-      playerClone.turns = playerClone.turns + 1;
+      player.cardsHand = player.cardsHand.sort();
 
-      const playersClone = updatePlayers(state.players, playerClone);
+      player.turns = player.turns + 1;
 
-      const nextPlayer = getNextPlayer(playerClone, playersClone);
+      const players = updatePlayers(state.players, player);
+
+      const nextPlayer = getNextPlayer(player, players);
 
       return {
         ...state,
@@ -508,7 +500,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
 
         tablePile: [],
 
-        players: playersClone,
+        players,
         currentPlayerUserId: nextPlayer.userId,
       };
     }

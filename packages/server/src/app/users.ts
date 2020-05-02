@@ -19,3 +19,7 @@ export const findUserByName = (username: string) => {
 export const findUserById = (userId: string) => {
   return users.find((u) => u.userId === userId);
 };
+
+export const findUserBySessionId = (sessionId: string) => {
+  return users.find((u) => u.sessionId === sessionId);
+};

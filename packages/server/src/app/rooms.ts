@@ -126,14 +126,8 @@ const getStateRoomForPlayer = (
   };
 };
 
-export const syncRoom = (room: Store, userId: string) => {
+export const syncRoom = (room: Store) => {
   const roomState = room.getState();
-
-  const player = findPlayerById(userId, roomState.players);
-  if (!player) {
-    console.error('SYNC_ROOM: Can not find player');
-    return;
-  }
 
   const users = getUsers();
 

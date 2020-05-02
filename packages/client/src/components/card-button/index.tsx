@@ -10,14 +10,14 @@ export function CardButton({
   cardId,
   onClick,
   disabled,
-  forceEnabled,
+  verifySelection,
   stack,
 }: {
   cardId?: CardId;
   onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   disabled?: boolean;
   stack?: 'open' | 'hand';
-  forceEnabled?: boolean;
+  verifySelection?: boolean;
 }) {
   const dispatch = useDispatch();
 
@@ -26,7 +26,7 @@ export function CardButton({
   );
 
   // Check whether card can be selected based on existing selection
-  if (!forceEnabled && cardId && stack && selectedCardIds.length) {
+  if (verifySelection && cardId && stack && selectedCardIds.length) {
     const selectedCardIsSameRank =
       getCardObj(selectedCardIds[0]).rank === getCardObj(cardId).rank;
     disabled = disabled || !selectedCardIsSameRank;
@@ -50,7 +50,7 @@ export function CardButton({
     <button
       className={'card-button' + (isSelected ? ' -selected' : '')}
       onClick={handleClick}
-      disabled={forceEnabled === false && disabled}
+      disabled={disabled}
     >
       <CardIcon cardId={cardId} />
     </button>

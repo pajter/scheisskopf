@@ -23,15 +23,14 @@ export const reducer = (state: State = initialState, action: Action): State => {
     }
     case 'SET_SESSION': {
       // Side-effect: update localstorage
-      localStorage.setItem('username', action.session.username);
-      localStorage.setItem('userId', action.session.userId);
+      localStorage.setItem('sessionId', action.session.sessionId);
 
-      return { ...state, session: action.session };
+      return { ...state, error: null, session: action.session };
     }
     case 'DESTROY_SESSION': {
       // Side-effect: update localstorage
-      localStorage.removeItem('username');
-      localStorage.removeItem('userId');
+      localStorage.removeItem('sessionId');
+      localStorage.removeItem('roomId');
 
       return { ...state, session: null };
     }

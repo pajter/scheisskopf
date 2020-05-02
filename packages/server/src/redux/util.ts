@@ -62,11 +62,13 @@ export const getNextPlayer = (
   players: Player[],
   skip: number = 0
 ): Player => {
+  players = players.map((p) => ({ ...p }));
+
   const currentPlayerIdx = players.findIndex(
     ({ userId }) => userId === currentPlayer.userId
   );
 
-  const iteratePlayers = getIterator([...players]);
+  const iteratePlayers = getIterator(players);
   // Set iterator to current player
   iteratePlayers.set(currentPlayerIdx);
   // Move to next player that is still in the game
@@ -84,6 +86,9 @@ export const getNextPlayer = (
 };
 
 export const findStartingPlayer = (players: Player[]) => {
+  // Clone
+  players = players.map((p) => ({ ...p }));
+
   let iterateSuits = getIterator(suits);
   let iterateRanks = getIterator(
     // Start from 4 (filter 2s and 3s)
@@ -174,21 +179,24 @@ export const updatePlayers = (
   players: Player[],
   newPlayer: Player | ((player: Player) => Player),
   userId?: string
-) => {
-  userId = typeof newPlayer === 'function' ? userId : newPlayer.userId;
+): Player[] => {
+  // Clone
+  players = players.map((p) => ({ ...p }));
 
+  userId = typeof newPlayer === 'function' ? userId : newPlayer.userId;
   const idx = players.findIndex((p) => p.userId === userId);
   if (idx < 0) {
     throw new Error('UPDATE_PLAYERS: Player not found');
   }
 
-  const playersCopy = [...players];
+  newPlayer =
+    typeof newPlayer === 'function' ? newPlayer(players[idx]) : newPlayer;
 
-  playersCopy[idx] = {
-    ...(typeof newPlayer === 'function' ? newPlayer(players[idx]) : newPlayer),
+  players[idx] = {
+    ...newPlayer,
   };
 
-  return playersCopy;
+  return players;
 };
 
 export const isPlayerFinished = (player: Player): boolean => {
@@ -341,13 +349,17 @@ export const assertGameState = (
   player: Player,
   tablePile: CardId[]
 ) => {
-  const unfinished = players.filter((player) => !player.isFinished);
+  // Clone
+  players = players.map((p) => ({ ...p }));
+  player = { ...player };
+
+  const unfinishedPlayers = players.filter((player) => !player.isFinished);
   if (
     // Check if game has ended
-    unfinished.length === 1
+    unfinishedPlayers.length === 1
   ) {
     // A shithead has been crowned!
-    const shitheadPlayer = unfinished[0];
+    const shitheadPlayer = unfinishedPlayers[0];
 
     // The shithead will become the dealer
     const shitHeadPlayerIdx = players.findIndex(

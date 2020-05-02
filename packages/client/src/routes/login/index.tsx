@@ -25,18 +25,15 @@ export function LoginRoute() {
       {
         username: name,
       },
-      ({ error, userId, username }) => {
+      ({ error, session }) => {
         if (error) {
           setError(error);
         }
 
-        if (userId && username) {
+        if (session) {
           dispatch({
             type: 'SET_SESSION',
-            session: {
-              username,
-              userId,
-            },
+            session,
           });
         }
       }

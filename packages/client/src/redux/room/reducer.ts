@@ -15,7 +15,7 @@ export const reducer = (
 
       return action.state;
     }
-    case 'LEAVE_ROOM': {
+    case 'CLEAR_ROOM': {
       return null;
     }
   }
