@@ -102,16 +102,30 @@ export class ScheissUser {
       }
 
       const roomState = room.getState();
+
+      if (!(roomState.state === 'pre-deal' || roomState.state === 'ended')) {
+        return {
+          error: createError('Game in progress'),
+        };
+      }
+
       if (roomState.players.find((player) => player.userId === this.userId)) {
         return { error: createError('User already in room!') };
       }
 
-      console.log(roomState.players);
       if (roomState.players.find((player) => player.name === this.username)) {
         return {
           error: createError(
             'There is already a user with this name in the room'
           ),
+        };
+      }
+
+      if (
+        roomState.spectactors.find((player) => player.userId === this.userId)
+      ) {
+        return {
+          error: createError('Already spectating!'),
         };
       }
 

@@ -60,6 +60,14 @@ export interface Player {
   turns: number;
 }
 
+export interface Spectator {
+  userId: string;
+  name: string;
+
+  connected: boolean;
+  lastPing: Date;
+}
+
 export interface SocketClientEvent {
   LOGIN: { username: string };
   PING: { sessionId: string };

@@ -7,10 +7,10 @@ import {
   getCardId,
   getCardObj,
 } from '../../../_shared/util';
-import { CardId } from '../../../_shared/types';
+import { CardId, Spectator } from '../../../_shared/types';
 import { GameErrorCode, GameError } from '../../../_shared/error';
 
-import { Player, State, Spectator } from './types';
+import { Player, State } from './types';
 import { ScheissUser } from '../app/user';
 
 export const createPlayer = (

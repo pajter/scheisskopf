@@ -16,6 +16,8 @@ export const reducer = (
       return action.state;
     }
     case 'CLEAR_ROOM': {
+      localStorage.removeItem('roomId');
+
       return null;
     }
   }

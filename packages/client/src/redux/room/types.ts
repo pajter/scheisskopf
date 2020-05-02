@@ -1,5 +1,5 @@
 import { Store as _Store } from 'redux';
-import { Player, CardId } from '../../../../_shared/types';
+import { Player, CardId, Spectator } from '../../../../_shared/types';
 
 import { GameError } from '../../../../_shared/error';
 
@@ -21,6 +21,7 @@ export interface State {
   cardsPile: CardId[];
 
   players: Player[];
+  spectators: Spectator[];
 
   currentPlayerUserId: string | null;
 }

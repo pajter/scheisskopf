@@ -122,6 +122,8 @@ const getStateRoomForPlayer = (
       return createPlayer(p, state, isOpponent);
     }),
 
+    spectators: state.spectactors,
+
     currentPlayerUserId: state.currentPlayerUserId,
   };
 };
@@ -144,4 +146,6 @@ export const syncRoom = (room: Store, action?: ActionClient) => {
       });
     }
   });
+
+  // TODO: spectators
 };

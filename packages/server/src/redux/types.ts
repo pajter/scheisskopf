@@ -1,6 +1,6 @@
 import { Store as ReduxStore } from 'redux';
 
-import { CardId, ActionClient } from '../../../_shared/types';
+import { CardId, ActionClient, Spectator } from '../../../_shared/types';
 import { GameError } from '../../../_shared/error';
 
 import { ScheissUser } from '../app/user';
@@ -88,8 +88,6 @@ export interface Player extends UserBase {
 
   hasStartingCard?: CardId;
 }
-
-export interface Spectator extends UserBase {}
 
 export interface Bot extends Player {
   botSettings: BotSettings;
