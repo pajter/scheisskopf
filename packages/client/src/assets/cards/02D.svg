@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg class="card" preserveAspectRatio="none" viewBox="-120 -168 240 336" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <symbol id="b" viewBox="-600 -600 1200 1200" preserveAspectRatio="xMinYMid">
+    <path d="M-400 0C-350 0 0-450 0-500 0-450 350 0 400 0 350 0 0 450 0 500 0 450-350 0-400 0z" fill="red"/>
+  </symbol>
+  <symbol id="a" viewBox="-500 -500 1000 1000" preserveAspectRatio="xMinYMid">
+    <path d="M-225-225c-20-40 25-235 225-235s225 135 225 235c0 200-450 385-450 685h450V300" stroke="red" stroke-width="80" stroke-linecap="square" stroke-miterlimit="1.5" fill="none"/>
+  </symbol>
+  <use height="32" transform="matrix(1, 0, 0, 1, -114.4000015258789, -156)" xlink:href="#a"/>
+  <use height="26.769" transform="matrix(1, 0, 0, 1, -111.78399658203125, -119)" xlink:href="#b"/>
+  <use height="70" transform="matrix(1, 0, 0, 1, -35, -135.50100708007812)" xlink:href="#b"/>
+  <g transform="rotate(180)">
+    <use height="32" transform="matrix(1, 0, 0, 1, -114.4000015258789, -156)" xlink:href="#a"/>
+    <use height="26.769" transform="matrix(1, 0, 0, 1, -111.78399658203125, -119)" xlink:href="#b"/>
+    <use height="70" transform="matrix(1, 0, 0, 1, -35, -135.50100708007812)" xlink:href="#b"/>
+  </g>
+</svg>

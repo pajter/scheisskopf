@@ -1,6 +1,6 @@
 import { State as StateClientRoom } from '../client/src/redux/room/types';
 
-export type CardSuit = 'diamond' | 'heart' | 'spade' | 'club';
+export type CardSuit = 'D' | 'H' | 'S' | 'C';
 
 export type CardRank =
   | 14 // Ace
@@ -17,7 +17,7 @@ export type CardRank =
   | 3
   | 2;
 
-// Card has format `${suit},${rank}`
+// Card has format `rank:suit`
 export type CardId = string;
 
 export type Stack = 'hand' | 'open' | 'blind';

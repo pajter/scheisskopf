@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg class="card" preserveAspectRatio="none" viewBox="-120 -168 240 336" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <symbol id="b" viewBox="-600 -600 1200 1200" preserveAspectRatio="xMinYMid">
+    <path d="M0-500c100 250 355 400 355 685a150 150 0 01-300 0 10 10 0 00-20 0c0 200 50 215 95 315h-260c45-100 95-115 95-315a10 10 0 00-20 0 150 150 0 01-300 0c0-285 255-435 355-685z"/>
+  </symbol>
+  <symbol id="a" viewBox="-500 -500 1000 1000" preserveAspectRatio="xMinYMid">
+    <path d="M-1-50a205 205 0 112 0h-2a255 255 0 102 0z" stroke="#000" stroke-width="80" stroke-linecap="square" stroke-miterlimit="1.5" fill="none"/>
+  </symbol>
+  <use height="32" transform="matrix(1, 0, 0, 1, -114.4000015258789, -156)" xlink:href="#a"/>
+  <use height="26.769" transform="matrix(1, 0, 0, 1, -111.78399658203125, -119)" xlink:href="#b"/>
+  <use height="70" transform="matrix(1, 0, 0, 1, -87.5009994506836, -135.50100708007812)" xlink:href="#b"/>
+  <use height="70" transform="matrix(1, 0, 0, 1, 17.500999450683594, -135.50100708007812)" xlink:href="#b"/>
+  <use height="70" transform="matrix(1, 0, 0, 1, -35, -85.25)" xlink:href="#b"/>
+  <use height="70" transform="matrix(1, 0, 0, 1, -87.5009994506836, -35)" xlink:href="#b"/>
+  <use height="70" transform="matrix(1, 0, 0, 1, 17.500999450683594, -35)" xlink:href="#b"/>
+  <g transform="rotate(180)">
+    <use height="32" transform="matrix(1, 0, 0, 1, -114.4000015258789, -156)" xlink:href="#a"/>
+    <use height="26.769" transform="matrix(1, 0, 0, 1, -111.78399658203125, -119)" xlink:href="#b"/>
+    <use height="70" transform="matrix(1, 0, 0, 1, -87.5009994506836, -135.50100708007812)" xlink:href="#b"/>
+    <use height="70" transform="matrix(1, 0, 0, 1, 17.500999450683594, -135.50100708007812)" xlink:href="#b"/>
+    <use height="70" transform="matrix(1, 0, 0, 1, -35, -85.25)" xlink:href="#b"/>
+  </g>
+</svg>

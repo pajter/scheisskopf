@@ -18,7 +18,7 @@ export const ranks: CardRank[] = [
   14, // Ace
 ];
 
-export const suits: CardSuit[] = ['club', 'diamond', 'heart', 'spade'];
+export const suits: CardSuit[] = ['C', 'D', 'H', 'S'];
 
 export const getCardId = ({
   suit,

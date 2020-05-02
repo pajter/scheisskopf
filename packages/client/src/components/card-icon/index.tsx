@@ -1,30 +1,20 @@
 import React from 'react';
 
 import { CardId } from '../../../../_shared/types';
-import { getCardObj, getRankName } from '../../../../_shared/util';
 
-const EMOJI = {
-  club: '♣️',
-  diamond: '♦️',
-  heart: '♥️',
-  spade: '♠️',
-} as const;
+import svgs from '../../assets/cards/*.svg';
 
 export function CardIcon({ cardId }: { cardId?: CardId | null }) {
-  const cardObj = typeof cardId === 'string' ? getCardObj(cardId) : undefined;
+  const src =
+    typeof cardId === 'undefined'
+      ? (svgs as any)['back']
+      : cardId
+      ? (svgs as any)[cardId.replace(':', '')]
+      : undefined;
 
   return (
-    <div
-      className={`card-icon ${typeof cardId === 'undefined' ? '-hidden' : ''} ${
-        cardId === null ? '-empty' : ''
-      }`}
-    >
-      {cardObj && (
-        <>
-          <div>{EMOJI[cardObj.suit]}</div>
-          <div>{getRankName(cardObj.rank)}</div>
-        </>
-      )}
+    <div className={`card-icon ${cardId === null ? '-empty' : ''}`}>
+      {src && <img src={src} width="224" height="336" />}
     </div>
   );
 }

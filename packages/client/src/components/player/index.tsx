@@ -180,13 +180,13 @@ export function Player(props: { userId: string }) {
         <div className="user-stacks scroll">
           {/* Hand */}
           <div
-            className={`card-stack -spaced ${
+            className={`card-stack -overlap-small ${
               player.cardsHand.length === 0 ? '-empty' : ''
             }`}
           >
             {[...player.cardsHand]
               .sort()
-              .reverse()
+
               .map((cardId, idx) => {
                 if (cardId === null || isOpponent) {
                   return <CardIcon key={idx} />;
