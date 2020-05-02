@@ -186,7 +186,7 @@ export function Player(props: { userId: string }) {
           >
             {[...player.cardsHand]
               .sort()
-
+              .reverse()
               .map((cardId, idx) => {
                 if (cardId === null || isOpponent) {
                   return <CardIcon key={idx} />;
