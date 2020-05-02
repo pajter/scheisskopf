@@ -133,7 +133,6 @@ export const reducer = (state: State = initialState, action: Action): State => {
       let players = state.players.map((p) => ({
         ...p,
         isFinished: false,
-        isScheisskopf: false,
         cardsBlind: [],
         cardsHand: [],
         cardsOpen: [],
