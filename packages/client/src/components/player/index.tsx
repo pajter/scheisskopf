@@ -180,35 +180,32 @@ export function Player(props: { userId: string }) {
         <div className="user-stacks scroll">
           {/* Hand */}
           <div
-            className={`card-stack -overlap-small ${
+            className={`card-stack -overlap-small -reverse ${
               player.cardsHand.length === 0 ? '-empty' : ''
             }`}
           >
-            {[...player.cardsHand]
-              .sort()
-              .reverse()
-              .map((cardId, idx) => {
-                if (cardId === null || isOpponent) {
-                  return <CardIcon key={idx} />;
-                }
+            {[...player.cardsHand].sort().map((cardId, idx) => {
+              if (cardId === null || isOpponent) {
+                return <CardIcon key={idx} />;
+              }
 
-                return (
-                  <CardButton
-                    key={cardId}
-                    cardId={cardId}
-                    verifySelection={!canSwap}
-                    disabled={
-                      canSwap
-                        ? false
-                        : !isPlaying ||
-                          playerMustPick ||
-                          gameState === 'clear-the-pile' ||
-                          gameState !== 'playing'
-                    }
-                    stack="hand"
-                  />
-                );
-              })}
+              return (
+                <CardButton
+                  key={cardId}
+                  cardId={cardId}
+                  verifySelection={!canSwap}
+                  disabled={
+                    canSwap
+                      ? false
+                      : !isPlaying ||
+                        playerMustPick ||
+                        gameState === 'clear-the-pile' ||
+                        gameState !== 'playing'
+                  }
+                  stack="hand"
+                />
+              );
+            })}
           </div>
 
           {/* Open */}
