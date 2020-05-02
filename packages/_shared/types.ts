@@ -79,7 +79,7 @@ export interface SocketServerEvent {
   CREATE_ROOM: { error?: Err; roomId?: string };
   JOIN_ROOM: { error?: Err; roomId?: string };
   REJOIN_ROOM: { error?: Err; roomId?: string };
-  ACTION_ROOM: { error?: Err; state?: StateClientRoom };
+  ACTION_ROOM: { error?: Err; state?: StateClientRoom; action?: ActionClient };
 }
 
 export type ActionClient =
@@ -121,3 +121,21 @@ export type ActionClient =
   | {
       type: 'PAUSE';
     };
+
+export type Animation =
+  | {
+      name: 'deal';
+    }
+  | {
+      name: 'swap';
+      userId: string;
+      cardIdsHand: CardId[];
+      cardIdsOpen: CardId[];
+    }
+  | {
+      name: 'clear-the-pile';
+    }
+  | { name: 'play-cards'; userId: string; cardIds: CardId[] }
+  | { name: 'play-blind-card'; userId: string; cardIdx: number }
+  | { name: 'pick-from-deck'; userId: string; amount: number }
+  | { name: 'pick-pile'; userId: string };

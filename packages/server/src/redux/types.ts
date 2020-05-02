@@ -12,6 +12,7 @@ export type GameState =
   | 'paused'
   | 'clear-the-pile'
   | 'ended';
+
 export interface State {
   roomId: string;
 

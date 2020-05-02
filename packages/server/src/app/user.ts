@@ -185,7 +185,11 @@ export class ScheissUser {
 
     room.dispatch({ ...action, user: this });
 
-    syncRoom(room);
+    const actionClient = action.type.startsWith('$')
+      ? undefined
+      : (action as ActionClient);
+
+    syncRoom(room, actionClient);
   }
 
   private handleActionRoom = (action: ActionClient) => {

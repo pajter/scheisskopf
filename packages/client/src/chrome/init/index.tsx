@@ -82,6 +82,8 @@ export function Init() {
         type: 'SYNC',
         state,
       });
+
+      // TODO: trigger animation
     }
   });
 

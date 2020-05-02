@@ -1,6 +1,6 @@
 import { Store as _Store } from 'redux';
 
-import { Err, Session, CardId } from '../../../../_shared/types';
+import { Err, Session, CardId, ActionClient } from '../../../../_shared/types';
 
 export interface State {
   session: Session | null;
@@ -36,6 +36,14 @@ export type Action =
     }
   | {
       type: 'CLEAR_CARD_SELECTION';
+    }
+  | {
+      type: 'ADD_ANIMATION';
+      action: ActionClient;
+    }
+  | {
+      type: 'REMOVE_ANIMATION';
+      idx: number;
     };
 
 export type Store = _Store<State, Action>;

@@ -1,4 +1,4 @@
-import { Player, MandatoryAction } from '../../../_shared/types';
+import { Player, MandatoryAction, ActionClient } from '../../../_shared/types';
 import { generateRandomString, getIterator } from '../../../_shared/util';
 
 import { State as StateRoom } from '../../../client/src/redux/room/types';
@@ -9,7 +9,7 @@ import {
   Store,
 } from '../redux/types';
 import { createStore } from '../redux/store';
-import { findPlayerById, mustPlayerPick } from '../redux/util';
+import { mustPlayerPick } from '../redux/util';
 import { getUsers } from './users';
 
 let rooms: Store[] = [];
@@ -126,7 +126,7 @@ const getStateRoomForPlayer = (
   };
 };
 
-export const syncRoom = (room: Store) => {
+export const syncRoom = (room: Store, action?: ActionClient) => {
   const roomState = room.getState();
 
   const users = getUsers();
@@ -140,6 +140,7 @@ export const syncRoom = (room: Store) => {
 
       user.emit('ACTION_ROOM', {
         state: getStateRoomForPlayer(roomState, player),
+        action,
       });
     }
   });
