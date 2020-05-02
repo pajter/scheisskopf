@@ -232,7 +232,11 @@ export function Player(props: { userId: string }) {
                       ? false
                       : isOpponent ||
                         !isPlaying ||
-                        playerMustPick ||
+                        (playerMustPick
+                          ? player.cardsHand.length === 0
+                            ? false
+                            : true
+                          : true) ||
                         player.cardsHand.length > 0 ||
                         gameState === 'clear-the-pile'
                   }
