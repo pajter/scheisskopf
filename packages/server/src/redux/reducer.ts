@@ -130,14 +130,16 @@ export const reducer = (state: State = initialState, action: Action): State => {
 
     case 'DEAL': {
       // Clone
-      let players = state.players.map((p) => ({ ...p }));
-
-      // Remove cards from all players
-      players.forEach((player) => {
-        player.cardsBlind = [];
-        player.cardsHand = [];
-        player.cardsOpen = [];
-      });
+      let players = state.players.map((p) => ({
+        ...p,
+        isFinished: false,
+        isScheisskopf: false,
+        cardsBlind: [],
+        cardsHand: [],
+        cardsOpen: [],
+        turns: 0,
+        hasStartingCard: false,
+      }));
 
       // Get shuffled deck
       const deck = getDeck(true);
