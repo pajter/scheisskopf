@@ -18,7 +18,7 @@ import {
   E_CARD_NOT_IN_OPEN_PILE,
 } from '../../../_shared/error';
 
-import { State, Action } from './types';
+import { State, Action, Player } from './types';
 
 import {
   calcCardCounts,
@@ -130,15 +130,17 @@ export const reducer = (state: State = initialState, action: Action): State => {
 
     case 'DEAL': {
       // Clone
-      let players = state.players.map((p) => ({
-        ...p,
-        isFinished: false,
-        cardsBlind: [],
-        cardsHand: [],
-        cardsOpen: [],
-        turns: 0,
-        hasStartingCard: false,
-      }));
+      let players = state.players.map(
+        (p): Player => ({
+          ...p,
+          isFinished: false,
+          cardsBlind: [],
+          cardsHand: [],
+          cardsOpen: [],
+          turns: 0,
+          hasStartingCard: undefined,
+        })
+      );
 
       // Get shuffled deck
       const deck = getDeck(true);
