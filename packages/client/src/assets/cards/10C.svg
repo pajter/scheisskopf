@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg class="card" preserveAspectRatio="none" viewBox="-120 -168 240 336" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <symbol id="b" viewBox="-600 -600 1200 1200" preserveAspectRatio="xMinYMid">
+    <path d="M30 150c5 235 55 250 100 350h-260c45-100 95-115 100-350a10 10 0 00-20 0 210 210 0 11-74-201 10 10 0 0014-14 230 230 0 11220 0 10 10 0 0014 14 210 210 0 11-74 201 10 10 0 00-20 0z"/>
+  </symbol>
+  <symbol id="a" viewBox="-500 -500 1000 1000" preserveAspectRatio="xMinYMid">
+    <path d="M-260 430v-860M-50 0v-310a150 150 0 01300 0v620a150 150 0 01-300 0z" stroke="#000" stroke-width="80" stroke-linecap="square" stroke-miterlimit="1.5" fill="none"/>
+  </symbol>
+  <use height="32" transform="matrix(1, 0, 0, 1, -114.4000015258789, -156)" xlink:href="#a"/>
+  <use height="26.769" transform="matrix(1, 0, 0, 1, -111.78399658203125, -119)" xlink:href="#b"/>
+  <use height="70" transform="matrix(1, 0, 0, 1, -87.5009994506836, -135.58799743652344)" xlink:href="#b"/>
+  <use height="70" transform="matrix(1, 0, 0, 1, 17.500999450683594, -135.58799743652344)" xlink:href="#b"/>
+  <use height="70" transform="matrix(1, 0, 0, 1, -87.5009994506836, -68.52899932861328)" xlink:href="#b"/>
+  <use height="70" transform="matrix(1, 0, 0, 1, 17.500999450683594, -68.52899932861328)" xlink:href="#b"/>
+  <use height="70" transform="matrix(1, 0, 0, 1, -35, -102.05799865722656)" xlink:href="#b"/>
+  <g transform="rotate(180)">
+    <use height="32" transform="matrix(1, 0, 0, 1, -114.4000015258789, -156)" xlink:href="#a"/>
+    <use height="26.769" transform="matrix(1, 0, 0, 1, -111.78399658203125, -119)" xlink:href="#b"/>
+    <use height="70" transform="matrix(1, 0, 0, 1, -87.5009994506836, -135.58799743652344)" xlink:href="#b"/>
+    <use height="70" transform="matrix(1, 0, 0, 1, 17.500999450683594, -135.58799743652344)" xlink:href="#b"/>
+    <use height="70" transform="matrix(1, 0, 0, 1, -87.5009994506836, -68.52899932861328)" xlink:href="#b"/>
+    <use height="70" transform="matrix(1, 0, 0, 1, 17.500999450683594, -68.52899932861328)" xlink:href="#b"/>
+    <use height="70" transform="matrix(1, 0, 0, 1, -35, -102.05799865722656)" xlink:href="#b"/>
+  </g>
+</svg>

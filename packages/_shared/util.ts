@@ -1,8 +1,6 @@
-import shuffle from 'lodash-es/shuffle';
-import reverse from 'lodash-es/reverse';
+import _ from 'lodash';
 
-import { CardId, CardSuit, CardRank } from './types';
-import { Player } from './redux/game/types';
+import { CardId, CardSuit, CardRank, Err } from './types';
 
 export const ranks: CardRank[] = [
   2,
@@ -20,23 +18,7 @@ export const ranks: CardRank[] = [
   14, // Ace
 ];
 
-export const suits: CardSuit[] = ['club', 'diamond', 'heart', 'spade'];
-
-export const getDeck = (shuffleDeck: boolean = true): CardId[] => {
-  const deck: CardId[] = [];
-
-  suits.forEach(suit => {
-    ranks.forEach(rank => {
-      deck.push(getCardId({ suit, rank }));
-    });
-  });
-
-  if (shuffleDeck) {
-    return shuffle(deck);
-  } else {
-    return deck;
-  }
-};
+export const suits: CardSuit[] = ['C', 'D', 'H', 'S'];
 
 export const getCardId = ({
   suit,
@@ -73,43 +55,51 @@ export const getRankName = (rank: CardRank): string => {
 };
 
 export const getIterator = <T>(src: T[]) => {
-  const handlers: {
+  const eventHandlers: {
     loop: (() => void)[];
   } = {
     loop: [],
   };
 
-  const iterator = {
+  const self = {
     curIdx: 0,
     src,
     on: (event: 'loop', handler: () => void) => {
-      handlers[event].push(handler);
+      eventHandlers[event].push(handler);
     },
     set: (idx: number) => {
-      iterator.curIdx = idx;
+      self.curIdx = idx;
     },
     get: () => {
-      return src[iterator.curIdx];
+      return src[self.curIdx];
+    },
+    getItems: () => {
+      let ret: T[] = [];
+      let i: T = self.get();
+      do {
+        ret.push({ ...i });
+      } while ((i = self.next()) && ret.length !== src.length);
+      return ret;
     },
     next: () => {
-      iterator.curIdx++;
-      if (iterator.curIdx > src.length - 1) {
-        iterator.curIdx = 0;
-        handlers.loop.forEach(f => f());
+      self.curIdx++;
+      if (self.curIdx > src.length - 1) {
+        self.curIdx = 0;
+        eventHandlers.loop.forEach((f) => f());
       }
-      return iterator.get();
+      return self.get();
     },
     prev: () => {
-      iterator.curIdx--;
-      if (iterator.curIdx < 0) {
-        iterator.curIdx = src.length - 1;
-        handlers.loop.forEach(f => f());
+      self.curIdx--;
+      if (self.curIdx < 0) {
+        self.curIdx = src.length - 1;
+        eventHandlers.loop.forEach((f) => f());
       }
-      return iterator.get();
+      return self.get();
     },
     forward: (assert: (i: T) => boolean) => {
       let n = 0;
-      while (!assert(iterator.next())) {
+      while (!assert(self.next())) {
         if (n > src.length) {
           break;
         }
@@ -118,7 +108,7 @@ export const getIterator = <T>(src: T[]) => {
     },
     reverse: (assert: (i: T) => boolean) => {
       let n = 0;
-      while (!assert(iterator.prev())) {
+      while (!assert(self.prev())) {
         if (n > src.length) {
           break;
         }
@@ -126,7 +116,7 @@ export const getIterator = <T>(src: T[]) => {
       }
     },
   };
-  return iterator;
+  return self;
 };
 
 export const areCardsTheSameRank = (cards: CardId[]): boolean => {
@@ -147,7 +137,7 @@ export const groupCardsByRank = (
   cards: CardId[]
 ): Partial<{ [K in CardRank]: CardId[] }> => {
   const ret: Partial<{ [K in CardRank]: CardId[] }> = {};
-  cards.forEach(card => {
+  cards.forEach((card) => {
     const cardObj = getCardObj(card);
     if (!ret[cardObj.rank]) {
       ret[cardObj.rank] = [];
@@ -162,7 +152,7 @@ export const groupCardsBySuit = (
   cards: CardId[]
 ): Partial<{ [K in CardSuit]: CardId[] }> => {
   const ret: Partial<{ [K in CardSuit]: CardId[] }> = {};
-  cards.forEach(card => {
+  cards.forEach((card) => {
     const cardObj = getCardObj(card);
     if (!ret[cardObj.suit]) {
       ret[cardObj.suit] = [];
@@ -172,81 +162,26 @@ export const groupCardsBySuit = (
   return ret;
 };
 
-export const shouldClearThePile = (cards: string[]) => {
-  if (getCardObj(cards[cards.length - 1]).rank === 10) {
-    return true;
+export const generateRandomString = (
+  length: number = 4,
+  dict = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+) => {
+  let ret = '';
+  while (ret.length < length) {
+    ret += _.sample(dict);
   }
-
-  const reversedCardObjs = reverse([...cards]).map(getCardObj);
-
-  let currentRank: number = reversedCardObjs[0].rank;
-  let count: number = 0;
-
-  for (const cardObj of reversedCardObjs) {
-    if (cardObj.rank === currentRank) {
-      // We have another card of this rank
-      count++;
-    } else {
-      if (cardObj.rank === 3) {
-        // Continue loop because 3 is invisible
-        continue;
-      }
-
-      // Another rank was found, abort!
-      break;
-    }
-  }
-
-  // 4 of the same ranks clears the deck
-  return count === 4;
+  return ret;
 };
 
-export const getIllegalMove = (
-  playingCard: CardId,
-  cards?: CardId[]
-): CardId | undefined => {
-  // Can always play an empty pile
-  if (typeof cards === 'undefined' || !cards.length) {
-    return;
-  }
+export const createError = (msg: string): Err => {
+  const e = new Error(msg);
 
-  // Special cards
-  const playingCardObj = getCardObj(playingCard);
-  if (
-    playingCardObj.rank === 2 ||
-    playingCardObj.rank === 3 ||
-    playingCardObj.rank === 10
-  ) {
-    return;
-  }
-
-  // If we have a '3', move up the pile until there's no longer a 3
-  const cardsCopy = [...cards];
-  let currentCardObj = getCardObj(cardsCopy.pop()!);
-  while (currentCardObj.rank === 3 && cardsCopy.length) {
-    currentCardObj = getCardObj(cardsCopy.pop()!);
-  }
-  // If there's still a 3, that means the whole pile is made up out of 3's, so it's a free play
-  if (currentCardObj.rank === 3) {
-    return;
-  }
-
-  if (currentCardObj.rank === 7) {
-    // Next card needs to be equal to or lower than 7
-    return playingCardObj.rank <= currentCardObj.rank
-      ? undefined
-      : getCardId(currentCardObj);
-  }
-
-  // Next card needs to be equal or higher than current
-  return playingCardObj.rank >= currentCardObj.rank
-    ? undefined
-    : getCardId(currentCardObj);
+  return { message: e.message };
 };
 
-export const getTotalTurns = (players: Player[]): number => {
-  return players.reduce((acc, player) => {
-    acc = acc + player.turns;
-    return acc;
-  }, 0);
-};
+/**
+ * Type guard for undefined values.
+ */
+export function isDefined<T>(a?: T): a is T {
+  return !(typeof a === 'undefined');
+}

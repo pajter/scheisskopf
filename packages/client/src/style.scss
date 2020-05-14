@@ -1,12 +1,29 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono&family=Roboto:wght@400;500&display=swap');
+
+$card-size-modifier: 0.3;
+$card-height: 336px * $card-size-modifier;
+$card-width: 224px * $card-size-modifier;
+
+$accent: #60a2f4;
+
+html {
+  height: 100%;
+}
+
 body {
+  min-height: 100%;
   font-family: sans-serif;
   padding: 0;
   margin: 0;
+  font-weight: 14px;
+  font-family: 'Roboto', sans-serif;
 }
 
 pre {
   margin: 0;
   padding: 0;
+  font-family: 'Roboto Mono', monospace;
+  font-size: inherit;
 }
 
 h2 {
@@ -16,44 +33,84 @@ h5 {
   margin-block-end: 0.67em;
 }
 
-$card-height: 48px;
+input {
+  padding: 8px;
+  background: white;
+  border: 1px solid $accent;
+  font: inherit;
+  background-color: white;
+  border-radius: 4px;
+}
+
+button {
+  padding: 8px 12px;
+  background: $accent;
+  color: #f7fbff;
+  text-transform: uppercase;
+  border: 0;
+  font: inherit;
+  border-radius: 4px;
+
+  &:disabled {
+    border-color: gray;
+    background-color: gray;
+    color: black;
+  }
+
+  + button {
+    margin-left: 8px;
+    &:first-child {
+      margin-left: 0;
+    }
+  }
+}
+
+code {
+  font-size: inherit;
+  font-family: 'Roboto Mono', monospace;
+}
 
 .card-icon {
+  position: relative;
+
   display: inline-flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  width: 24px;
+  width: $card-width;
   height: $card-height;
   padding: 4px;
 
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 2px solid #dedcdc61;
+  box-shadow: 0px 0px 12px 2px inset #00000014, 1px 1px 2px 0px #0000002e;
   border-radius: 4px;
 
-  position: relative;
   background-color: white;
 
-  &.-hidden {
-    background-color: #dfdbe5;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='12' viewBox='0 0 20 12'%3E%3Cg fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.4'%3E%3Cpath d='M9.8 12L0 2.2V.8l10 10 10-10v1.4L10.2 12h-.4zm-4 0L0 6.2V4.8L7.2 12H5.8zm8.4 0L20 6.2V4.8L12.8 12h1.4zM9.8 0l.2.2.2-.2h-.4zm-4 0L10 4.2 14.2 0h-1.4L10 2.8 7.2 0H5.8z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  @keyframes enter {
+    from {
+      transform: scale(1.2);
+    }
+    to {
+      transform: scale(1);
+    }
   }
 
-  > div:first-child {
-    padding-left: 5px;
-  }
-  > div:last-child {
-    font-family: Menlo, monospace;
-  }
-}
+  animation: enter 350ms ease;
 
-button {
-  padding: 8px;
-  background: none;
-  border: 1px solid black;
-  font: inherit;
-  &:focus {
-    outline: none;
+  &.-empty {
+    background-image: none;
+    box-shadow: none;
+    border-color: transparent;
+    background: transparent;
+    pointer-events: none;
+  }
+
+  img {
+    width: auto;
+    max-height: 100%;
+    display: block;
   }
 }
 
@@ -78,9 +135,10 @@ button {
     }
   }
 
-  &.-toggled {
+  &.-selected {
     > .card-icon {
       background-color: #eee;
+      border: 2px solid blueviolet;
     }
   }
 
@@ -89,15 +147,7 @@ button {
   }
 }
 
-.user-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
 .card-stack {
-  max-width: 100%;
-  overflow-x: auto;
   white-space: nowrap;
   display: flex;
   flex-flow: row-reverse;
@@ -106,9 +156,32 @@ button {
   &.-overlap {
     > .card-icon,
     > .card-button {
-      margin-right: -8px;
+      margin-right: -42px;
       &:first-child {
         margin-right: 0;
+      }
+    }
+  }
+
+  &.-overlap-small {
+    > .card-icon,
+    > .card-button {
+      margin-right: -22px;
+      &:first-child {
+        margin-right: 0;
+      }
+    }
+  }
+
+  &.-reverse {
+    flex-flow: row;
+    justify-content: flex-start;
+    > .card-icon,
+    > .card-button {
+      margin-right: 0;
+      margin-left: -42px;
+      &:first-child {
+        margin-left: 0;
       }
     }
   }
@@ -116,22 +189,28 @@ button {
   &.-overlap-large {
     > .card-icon,
     > .card-button {
-      margin-right: -24px;
+      margin-right: -48px;
+
       &:first-child {
         margin-right: 0;
       }
-      border-right: 1px solid rgba(0, 0, 0, 0.4);
+
+      box-shadow: 4px 0 8px 0px #0000000a;
     }
   }
 
   &.-spaced {
     > .card-icon,
     > .card-button {
-      margin-right: 2px;
+      margin-right: 8px;
       &:first-child {
         margin-right: 0;
       }
     }
+  }
+
+  &.-empty {
+    pointer-events: none;
   }
 }
 
@@ -146,16 +225,21 @@ button {
     }
     &:nth-child(2) {
       position: relative;
-      top: 4px;
+      top: 16px;
       z-index: 3;
     }
     &:nth-child(3),
     &:nth-child(2):last-child {
       position: relative;
-      top: -48px;
+      top: -80px;
       z-index: 2;
+      margin-bottom: -60px;
     }
   }
+}
+
+.pad {
+  padding: 8px;
 }
 
 .stick {
@@ -165,39 +249,128 @@ button {
   background-color: white;
   z-index: 10;
   box-shadow: 0px 4px 47px 0px rgba(0, 0, 0, 0.2);
-  padding: 8px;
 }
 
-.playfield {
+.header {
+  > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
   padding: 8px;
+
+  h2,
+  h3 {
+    margin: 0;
+    padding: 0;
+  }
+
+  > button {
+    margin-left: 8px;
+
+    &:first-child {
+      margin-left: 0;
+    }
+  }
+
+  pre {
+    font-size: 13px;
+  }
+}
+
+.footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #c32727;
+  color: white;
+  z-index: 10;
 }
 
 .error {
+  @keyframes scale-in-center {
+    0% {
+      transform: scale(0);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
   animation: scale-in-center 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
   background: red;
   color: black;
   padding: 8px;
 }
 
-/* ----------------------------------------------
- * Generated by Animista on 2020-3-23 21:35:12
- * Licensed under FreeBSD License.
- * See http://animista.net/license for more info.
- * w: http://animista.net, t: @cssanimista
- * ---------------------------------------------- */
+.pile {
+  display: flex;
+  padding: 8px;
+  background-color: #2e692e;
+  background-image: url('./assets/noise.png');
+  align-items: center;
+  min-height: 128px;
 
-/**
- * ----------------------------------------
- * animation scale-in-center
- * ----------------------------------------
- */
-@keyframes scale-in-center {
-  0% {
-    transform: scale(0);
-    opacity: 1;
+  h6 {
+    margin-top: 0;
   }
-  100% {
-    transform: scale(1);
-    opacity: 1;
+
+  > button {
+    margin-left: 8px;
+
+    &:first-child {
+      margin-left: 0;
+    }
   }
+}
+
+.notify {
+  padding: 8px;
+  text-align: center;
+  font-size: 40px;
+}
+
+.player {
+  h2 {
+    margin-top: 8px;
+    margin-bottom: 8px;
+  }
+
+  &.-highlight {
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      color: royalblue;
+    }
+  }
+  &.-highlight-finished {
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      margin-top: 0;
+      margin-bottom: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+      color: gray;
+    }
+  }
+}
+
+.scroll {
+  max-width: 100%;
+  overflow: auto;
 }
