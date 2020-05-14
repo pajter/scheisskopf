@@ -9,6 +9,11 @@ import './console';
 
 import { ScheissApp } from './app';
 
+process.on('SIGINT', () => {
+  console.info('Interrupted');
+  process.exit(0);
+});
+
 ////////////////////////////
 
 const boot = () => {
