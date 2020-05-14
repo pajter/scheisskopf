@@ -17,7 +17,6 @@ function getSocketFunctions<
     arg: I[E],
     returnHandler: (returnArg: O[E]) => void
   ) {
-    console.log('emitAndListen', event, arg);
     // Set listener before emitting
     listen(event, returnHandler);
 
@@ -28,12 +27,9 @@ function getSocketFunctions<
     event: E,
     emitHandler: (arg: O[E]) => I[E]
   ) {
-    console.log('listenAndEmit', event);
     listen(event, (arg) => {
-      console.log('received', arg);
       const returnArgs = emitHandler(arg);
       if (returnArgs) {
-        console.log('emitting', event, returnArgs);
         emit(event, returnArgs);
       }
     });

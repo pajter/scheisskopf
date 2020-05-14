@@ -408,14 +408,6 @@ export const assertGameState = (
         openMoves.legal.length === 0 && openMoves.illegal.length > 0;
     }
 
-    console.log(
-      'nextplayer must pick',
-      nextPlayerMustPick,
-      nextPlayer.name,
-      handMoves,
-      openMoves
-    );
-
     if (nextPlayerMustPick) {
       // Update players array
       players.forEach((p) => {

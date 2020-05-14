@@ -41,7 +41,6 @@ export function Init() {
             console.debug('Trying to rejoin room', roomId);
 
             emitAndListen('REJOIN_ROOM', { roomId }, ({ error, roomId }) => {
-              console.log({ error, roomId });
               if (error) {
                 localStorage.removeItem('roomId');
 
