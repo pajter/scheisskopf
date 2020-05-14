@@ -178,3 +178,10 @@ export const createError = (msg: string): Err => {
 
   return { message: e.message };
 };
+
+/**
+ * Type guard for undefined values.
+ */
+export function isDefined<T>(a?: T): a is T {
+  return !(typeof a === 'undefined');
+}

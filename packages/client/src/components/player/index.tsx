@@ -26,7 +26,7 @@ export function Player(props: { userId: string }) {
   const emitAction = getEmitter('ACTION_ROOM');
 
   const gameState = stateRoom.state;
-  const illegalBlindMove = stateRoom.error?.code === 'E_ILLEGAL_MOVE_BLIND';
+
   const isOpponent = player.userId !== userId;
 
   const mayStart =
@@ -42,8 +42,6 @@ export function Player(props: { userId: string }) {
     (gameState === 'pre-game' ||
       (gameState === 'playing' && player.turns === 0));
 
-  const playerMustPick = player.mandatoryAction === 'pick' || illegalBlindMove;
-
   const playableCardsOpen = player.cardsOpen.filter(
     (c) => c !== null
   ) as CardId[];
@@ -52,7 +50,7 @@ export function Player(props: { userId: string }) {
     if (!isPlaying) {
       return false;
     }
-    if (playerMustPick) {
+    if (player.mustPick) {
       return false;
     }
     if (isOpponent) {
@@ -149,7 +147,7 @@ export function Player(props: { userId: string }) {
               <button onClick={clearThePile}>CLEAR THE DECK</button>
             )}
 
-            {isPlaying && gameState !== 'clear-the-pile' && playerMustPick && (
+            {isPlaying && gameState !== 'clear-the-pile' && player.mustPick && (
               <button onClick={pick}>PICK</button>
             )}
 
@@ -198,7 +196,7 @@ export function Player(props: { userId: string }) {
                     canSwap
                       ? false
                       : !isPlaying ||
-                        playerMustPick ||
+                        player.mustPick ||
                         gameState === 'clear-the-pile' ||
                         gameState !== 'playing'
                   }
@@ -229,7 +227,7 @@ export function Player(props: { userId: string }) {
                       ? false
                       : isOpponent ||
                         !isPlaying ||
-                        (playerMustPick
+                        (player.mustPick
                           ? player.cardsHand.length === 0
                             ? false
                             : true
@@ -266,7 +264,7 @@ export function Player(props: { userId: string }) {
                   disabled={
                     isOpponent ||
                     !isPlaying ||
-                    playerMustPick ||
+                    player.mustPick ||
                     playableCardsOpen.length > 0 ||
                     player.cardsHand.length > 0 ||
                     gameState === 'clear-the-pile'

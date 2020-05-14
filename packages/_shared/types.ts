@@ -1,4 +1,4 @@
-import { State as StateClientRoom } from '../client/src/redux/room/types';
+import { GameError } from './error';
 
 export type CardSuit = 'D' | 'H' | 'S' | 'C';
 
@@ -32,25 +32,13 @@ export type Err = {
   message: string;
 };
 
-export type MandatoryAction = 'pick';
-
-export interface Player {
+export interface PlayerBase {
   userId: string;
   name: string;
 
   position: number;
 
-  connected: boolean;
-  lastPing: Date;
-
-  mandatoryAction?: MandatoryAction;
-
-  // Always public. `null` means already played
-  cardsOpen: (CardId | null)[];
-  // Always hidden. `null` means already played
-  cardsBlind: (number | null)[];
-  // Visible only for player. `null` if invisible
-  cardsHand: (CardId | null)[];
+  mustPick: boolean;
 
   isFinished: boolean;
   isDealer: boolean;
@@ -58,6 +46,29 @@ export interface Player {
   hasStartingCard?: CardId;
 
   turns: number;
+}
+
+export interface Player extends PlayerBase {
+  connected: boolean;
+  lastPing: Date;
+
+  // Always public. `null` means already played
+  cardsOpen: (CardId | null)[];
+  // Always hidden. `null` means already played
+  cardsBlind: (number | null)[];
+  // Visible only for player. `undefined` if invisible
+  cardsHand: (CardId | undefined)[];
+}
+
+export interface Bot extends PlayerBase {
+  // Always hidden. `null` means already played
+  cardsOpen: (CardId | null)[];
+  // Always hidden. `null` means already played
+  cardsBlind: (number | null)[];
+  // Always hidden. `undefined` if invisible
+  cardsHand: undefined[];
+
+  botSettings: BotSettings;
 }
 
 export interface Spectator {
@@ -77,6 +88,8 @@ export interface SocketClientEvent {
   JOIN_ROOM: { roomId: string };
   REJOIN_ROOM: { roomId: string };
   ACTION_ROOM: ActionClient;
+  ADD_BOT: { roomId: string };
+  REMOVE_BOT: { roomId: string; botId: string };
 }
 
 export interface SocketServerEvent {
@@ -88,6 +101,31 @@ export interface SocketServerEvent {
   JOIN_ROOM: { error?: Err; roomId?: string };
   REJOIN_ROOM: { error?: Err; roomId?: string };
   ACTION_ROOM: { error?: Err; state?: StateClientRoom; action?: ActionClient };
+  ADD_BOT: { error?: Err; bot?: { name: string; botId: string } };
+  REMOVE_BOT: { botId: string };
+}
+
+export interface StateClientRoom {
+  roomId: string;
+
+  error: GameError | null;
+
+  state:
+    | 'pre-deal'
+    | 'pre-game'
+    | 'playing'
+    | 'paused'
+    | 'clear-the-pile'
+    | 'ended';
+
+  cardsDeckCount: number;
+  cardsDiscardedCount: number;
+  cardsPile: CardId[];
+
+  players: (Player | Bot)[];
+  spectators: Spectator[];
+
+  currentPlayerUserId: string | null;
 }
 
 export type ActionClient =
@@ -147,3 +185,7 @@ export type Animation =
   | { name: 'play-blind-card'; userId: string; cardIdx: number }
   | { name: 'pick-from-deck'; userId: string; amount: number }
   | { name: 'pick-pile'; userId: string };
+
+export interface BotSettings {
+  difficulty: 'easy' | 'normal' | 'hard';
+}

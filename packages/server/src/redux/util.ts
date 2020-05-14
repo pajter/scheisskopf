@@ -10,8 +10,9 @@ import {
 import { CardId, Spectator } from '../../../_shared/types';
 import { GameErrorCode, GameError } from '../../../_shared/error';
 
-import { Player, State } from './types';
+import { Player, State, Bot } from './types';
 import { ScheissUser } from '../app/user';
+import { ScheissBot } from '../app/bot';
 
 export const createPlayer = (
   user: ScheissUser & { userId: string },
@@ -32,9 +33,36 @@ export const createPlayer = (
 
   hasStartingCard: undefined,
 
+  mustPick: false,
+
   connected: true,
   lastPing: new Date(),
 });
+
+export const createBot = (bot: ScheissBot): Bot => {
+  return {
+    userId: bot.userId,
+    name: bot.username,
+
+    cardsHand: [],
+    cardsOpen: [],
+    cardsBlind: [],
+
+    turns: 0,
+
+    isFinished: false,
+    isDealer: false,
+    isScheisskopf: false,
+
+    mustPick: false,
+
+    hasStartingCard: undefined,
+
+    botSettings: {
+      difficulty: 'easy',
+    },
+  };
+};
 
 export const createSpectator = (
   user: ScheissUser & { userId: string }
@@ -47,10 +75,10 @@ export const createSpectator = (
 });
 
 export const findPlayerById = (
-  playerId: string,
-  players: Player[]
-): Player | undefined => {
-  const player = players.find(({ userId }) => userId === playerId);
+  playerUserId: string,
+  players: (Player | Bot)[]
+): Player | Bot | undefined => {
+  const player = players.find(({ userId }) => userId === playerUserId);
   if (player) {
     // Always return copy
     return { ...player };
@@ -58,10 +86,10 @@ export const findPlayerById = (
 };
 
 export const getNextPlayer = (
-  currentPlayer: Player,
-  players: Player[],
+  currentPlayer: Player | Bot,
+  players: (Player | Bot)[],
   skip: number = 0
-): Player => {
+): Player | Bot => {
   players = players.map((p) => ({ ...p }));
 
   const currentPlayerIdx = players.findIndex(
@@ -85,7 +113,7 @@ export const getNextPlayer = (
   return iteratePlayers.get();
 };
 
-export const findStartingPlayer = (players: Player[]) => {
+export const findStartingPlayer = (players: (Player | Bot)[]) => {
   // Clone
   players = players.map((p) => ({ ...p }));
 
@@ -145,7 +173,7 @@ export const calcCardCounts = (
   let hand = 3;
 
   // Min amount of cards
-  const blindMin = 2;
+  const blindMin = 1;
   const openMin = 1;
   const handMin = 1;
 
@@ -176,10 +204,10 @@ export const calcCardCounts = (
 };
 
 export const updatePlayers = (
-  players: Player[],
-  newPlayer: Player | ((player: Player) => Player),
+  players: (Player | Bot)[],
+  newPlayer: (Player | Bot) | ((player: Player | Bot) => Player | Bot),
   userId?: string
-): Player[] => {
+): (Player | Bot)[] => {
   // Clone
   players = players.map((p) => ({ ...p }));
 
@@ -199,7 +227,7 @@ export const updatePlayers = (
   return players;
 };
 
-export const isPlayerFinished = (player: Player): boolean => {
+export const isPlayerFinished = (player: Player | Bot): boolean => {
   return (
     player.cardsBlind.filter((c) => c !== null).length === 0 &&
     player.cardsOpen.filter((c) => c !== null).length === 0 &&
@@ -218,7 +246,7 @@ export const getErrorState = (
   };
 };
 
-export const getTotalTurns = (players: Player[]): number => {
+export const getTotalTurns = (players: (Player | Bot)[]): number => {
   return players.reduce((acc, player) => {
     acc = acc + player.turns;
     return acc;
@@ -280,11 +308,11 @@ export const getIllegalMoveCard = (
   }
 
   // Special cards
-  const playingCardObj = getCardObj(testCard);
+  const testCardObj = getCardObj(testCard);
   if (
-    playingCardObj.rank === 2 ||
-    playingCardObj.rank === 3 ||
-    playingCardObj.rank === 10
+    testCardObj.rank === 2 ||
+    testCardObj.rank === 3 ||
+    testCardObj.rank === 10
   ) {
     return;
   }
@@ -295,6 +323,7 @@ export const getIllegalMoveCard = (
   while (currentCardObj.rank === 3 && cardsCopy.length) {
     currentCardObj = getCardObj(cardsCopy.pop()!);
   }
+
   // If there's still a 3, that means the whole pile is made up out of 3's, so it's a free play
   if (currentCardObj.rank === 3) {
     return;
@@ -302,53 +331,28 @@ export const getIllegalMoveCard = (
 
   if (currentCardObj.rank === 7) {
     // Next card needs to be equal to or lower than 7
-    return playingCardObj.rank <= currentCardObj.rank
+    return testCardObj.rank <= currentCardObj.rank
       ? undefined
       : getCardId(currentCardObj);
   }
 
   // Next card needs to be equal or higher than current
-  return playingCardObj.rank >= currentCardObj.rank
+  return testCardObj.rank >= currentCardObj.rank
     ? undefined
     : getCardId(currentCardObj);
-};
-
-export const mustPlayerPick = (
-  player: Player,
-  cardsPile: CardId[]
-): boolean => {
-  const cardsOpen = player.cardsOpen.filter((c) => c !== null) as string[];
-
-  // Player must first play from hand before playing from open
-  const playingStack = player.cardsHand.length
-    ? player.cardsHand
-    : cardsOpen.length
-    ? cardsOpen
-    : [];
-
-  if (!playingStack.length) {
-    // Player does not need to pick if there are no cards
-    return false;
-  }
-
-  for (const cardId of playingStack) {
-    if (!getIllegalMoveCard(cardId, cardsPile)) {
-      // If a legal move is found, player does NOT have to pick
-      return false;
-    }
-  }
-
-  // If no legal moves were found in the players' playing pile, player has to pick
-  return true;
 };
 
 export const assertGameState = (
   gameState: State['state'],
   nextPlayerUserId: string,
-  players: Player[],
-  player: Player,
+  players: (Player | Bot)[],
+  player: Player | Bot,
   tablePile: CardId[]
-) => {
+): {
+  gameState: State['state'];
+  nextPlayerUserId: string;
+  players: (Player | Bot)[];
+} => {
   // Clone
   players = players.map((p) => ({ ...p }));
   player = { ...player };
@@ -365,25 +369,86 @@ export const assertGameState = (
     const shitHeadPlayerIdx = players.findIndex(
       (p) => p.userId === shitheadPlayer.userId
     );
+    // Reset player states
     players.forEach((player) => {
       player.isDealer = false;
       player.isScheisskopf = false;
     });
+    // Set state on shithead
     players[shitHeadPlayerIdx].isDealer = true;
     players[shitHeadPlayerIdx].isScheisskopf = true;
 
-    gameState = 'ended';
-  } else if (
-    // Check for 'clear-the-pile'
-    shouldClearThePile(tablePile)
-  ) {
+    return { gameState: 'ended', nextPlayerUserId, players };
+  }
+
+  // Check for 'clear-the-pile'
+  if (shouldClearThePile(tablePile)) {
     gameState = 'clear-the-pile';
 
     // If the player who clears the pile is not yet finished, they must play again
     if (!player.isFinished) {
       nextPlayerUserId = player.userId;
     }
+
+    return { gameState: 'clear-the-pile', nextPlayerUserId, players };
+  }
+
+  // Check if next player needs to pick
+  const nextPlayer = players.find((p) => p.userId === nextPlayerUserId);
+  if (nextPlayer) {
+    const handMoves = getLegalAndIllegalCards(tablePile, nextPlayer.cardsHand);
+    const openMoves = getLegalAndIllegalCards(tablePile, nextPlayer.cardsOpen);
+
+    let nextPlayerMustPick = false;
+    if (nextPlayer.cardsHand.length) {
+      nextPlayerMustPick =
+        handMoves.legal.length === 0 && handMoves.illegal.length > 0;
+    } else if (nextPlayer.cardsOpen.length) {
+      nextPlayerMustPick =
+        openMoves.legal.length === 0 && openMoves.illegal.length > 0;
+    }
+
+    console.log(
+      'nextplayer must pick',
+      nextPlayerMustPick,
+      nextPlayer.name,
+      handMoves,
+      openMoves
+    );
+
+    if (nextPlayerMustPick) {
+      // Update players array
+      players.forEach((p) => {
+        if (p.userId === nextPlayerUserId) {
+          p.mustPick = true;
+        }
+      });
+    }
   }
 
   return { gameState, nextPlayerUserId, players };
+};
+
+export const getLegalAndIllegalCards = (
+  tablePile: CardId[],
+  cards: (CardId | null)[]
+) => {
+  const legal: CardId[] = [];
+  const illegal: CardId[] = [];
+
+  cards.forEach((card) => {
+    if (!card) {
+      return;
+    }
+
+    const illegalMove = getIllegalMoveCard(card, tablePile);
+
+    if (illegalMove) {
+      illegal.push(card);
+    } else {
+      legal.push(card);
+    }
+  });
+
+  return { legal, illegal };
 };

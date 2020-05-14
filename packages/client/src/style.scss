@@ -53,6 +53,8 @@ button {
 
   &:disabled {
     border-color: gray;
+    background-color: gray;
+    color: black;
   }
 
   + button {

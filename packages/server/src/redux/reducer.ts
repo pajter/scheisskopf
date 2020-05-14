@@ -18,7 +18,7 @@ import {
   E_CARD_NOT_IN_OPEN_PILE,
 } from '../../../_shared/error';
 
-import { State, Action, Player } from './types';
+import { State, Action, Player, Bot } from './types';
 
 import {
   calcCardCounts,
@@ -34,6 +34,7 @@ import {
   getErrorState,
   createSpectator,
   assertGameState,
+  createBot,
 } from './util';
 
 export const initialState: State = {
@@ -92,7 +93,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
         players: updatePlayers(
           state.players,
           (user) => ({ ...user, connected: true }),
-          action.user.userId
+          action.userId
         ),
       };
     }
@@ -104,8 +105,22 @@ export const reducer = (state: State = initialState, action: Action): State => {
         players: updatePlayers(
           state.players,
           (player) => ({ ...player, connected: false }),
-          action.user.userId
+          action.userId
         ),
+      };
+    }
+
+    case '$ADD_BOT': {
+      return {
+        ...state,
+        players: [...state.players, createBot(action.bot)],
+      };
+    }
+
+    case '$REMOVE_BOT': {
+      return {
+        ...state,
+        players: state.players.filter((p) => p.userId !== action.botId),
       };
     }
 
@@ -119,9 +134,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
 
         error: null,
 
-        players: state.players.filter(
-          ({ userId }) => userId !== action.user.userId
-        ),
+        players: state.players.filter(({ userId }) => userId !== action.userId),
       };
 
     case 'RESET': {
@@ -130,17 +143,16 @@ export const reducer = (state: State = initialState, action: Action): State => {
 
     case 'DEAL': {
       // Clone
-      let players = state.players.map(
-        (p): Player => ({
-          ...p,
-          isFinished: false,
-          cardsBlind: [],
-          cardsHand: [],
-          cardsOpen: [],
-          turns: 0,
-          hasStartingCard: undefined,
-        })
-      );
+      let players = state.players.map((p): Player | Bot => ({
+        ...p,
+        isFinished: false,
+        cardsBlind: [],
+        cardsHand: [],
+        cardsOpen: [],
+        turns: 0,
+        hasStartingCard: undefined,
+        mustPick: false,
+      }));
 
       // Get shuffled deck
       const deck = getDeck(true);
@@ -206,21 +218,22 @@ export const reducer = (state: State = initialState, action: Action): State => {
         throw new GameError(E_SWAP_UNFAIR);
       }
 
-      let player = findPlayerById(action.user.userId, state.players);
+      let player = findPlayerById(action.userId, state.players);
       if (!player) {
         return state;
       }
 
       // Clone player
       player = { ...player };
+      player.mustPick = false;
 
       // Check if card is in hand
-      if (_.difference(action.cardsHand, player.cardsHand).length) {
+      if (_.difference(action.cardsHand, player.cardsHand).length > 0) {
         throw new GameError(E_CARD_NOT_IN_HAND);
       }
 
       // Check if card is in open pile
-      if (_.difference(action.cardsOpen, player.cardsOpen).length) {
+      if (_.difference(action.cardsOpen, player.cardsOpen).length > 0) {
         throw new GameError(E_CARD_NOT_IN_OPEN_PILE);
       }
 
@@ -256,13 +269,6 @@ export const reducer = (state: State = initialState, action: Action): State => {
     }
 
     case 'PLAY': {
-      // Clone player
-      let player = findPlayerById(action.user.userId, state.players);
-      if (!player) {
-        return state;
-      }
-      player = { ...player };
-
       if (action.cards.length === 0) {
         throw new GameError(E_NO_CARDS_PLAYED);
       }
@@ -272,14 +278,23 @@ export const reducer = (state: State = initialState, action: Action): State => {
         throw new GameError(E_CARD_RANKS_DONT_MATCH);
       }
 
-      if (getTotalTurns(state.players) === 0) {
+      let player = findPlayerById(action.userId, state.players);
+      if (!player) {
+        return state;
+      }
+
+      // Clone player
+      player = { ...player };
+
+      const totalTurns = getTotalTurns(state.players);
+      if (totalTurns === 0) {
         // Update state when making first play
         state.state = 'playing';
       }
 
       // If start of game, the startingCard has to be played
       if (
-        getTotalTurns(state.players) === 0 &&
+        totalTurns === 0 &&
         player.hasStartingCard &&
         !action.cards.includes(player.hasStartingCard)
       ) {
@@ -290,8 +305,13 @@ export const reducer = (state: State = initialState, action: Action): State => {
         // Check if card can be played
         const illegalMoveCard = getIllegalMoveCard(card, state.tablePile);
         if (illegalMoveCard) {
+          player.mustPick = true;
+
           return getErrorState(
-            state,
+            {
+              ...state,
+              players: updatePlayers(state.players, player),
+            },
             new GameError(E_ILLEGAL_MOVE, card, illegalMoveCard)
           );
         }
@@ -301,6 +321,8 @@ export const reducer = (state: State = initialState, action: Action): State => {
         // Nullify open cards
         player.cardsOpen = player.cardsOpen.map((c) => (c === card ? null : c));
       }
+
+      player.mustPick = false;
 
       // Add cards back into players hand while there are cards in the deck and the player doesn't have enough in hand
       const tableDeck = [...state.tableDeck];
@@ -358,7 +380,7 @@ export const reducer = (state: State = initialState, action: Action): State => {
 
     case 'PLAY_BLIND': {
       // Clone player
-      let player = findPlayerById(action.user.userId, state.players);
+      let player = findPlayerById(action.userId, state.players);
       if (!player) {
         return state;
       }
@@ -388,6 +410,9 @@ export const reducer = (state: State = initialState, action: Action): State => {
 
       const illegalMoveCard = getIllegalMoveCard(blindCard, state.tablePile);
       if (illegalMoveCard) {
+        // Blind card could not be played so player must pick all
+        player.mustPick = true;
+
         return getErrorState(
           {
             ...state,
@@ -397,6 +422,8 @@ export const reducer = (state: State = initialState, action: Action): State => {
           new GameError(E_ILLEGAL_MOVE_BLIND, blindCard, illegalMoveCard)
         );
       }
+
+      player.mustPick = false;
 
       // Player is finished if there are no more cards left
       if (isPlayerFinished(player)) {
@@ -462,13 +489,14 @@ export const reducer = (state: State = initialState, action: Action): State => {
         throw new GameError(E_CARD_RANKS_DONT_MATCH);
       }
 
-      const player = findPlayerById(action.user.userId, state.players);
+      const player = findPlayerById(action.userId, state.players);
       if (!player) {
         return state;
       }
 
       // Take the (shit)pile
       player.cardsHand = [...player.cardsHand, ...state.tablePile];
+      player.mustPick = false;
 
       if (action.ownCards && action.ownCards.length) {
         // Filter cards already in hand (this could happen by accident, we just want to make sure)

@@ -12,7 +12,9 @@ export function LoginRoute() {
 
   const dispatch = useDispatch();
 
-  const [name, setName] = React.useState('');
+  const [name, setName] = React.useState(
+    localStorage.getItem('username') || ''
+  );
   const [error, setError] = React.useState<Err>();
 
   if (session) {
@@ -49,7 +51,10 @@ export function LoginRoute() {
         type="text"
         placeholder="Name"
         value={name}
-        onChange={(e) => setName(e.target.value)}
+        onChange={(e) => {
+          setName(e.target.value);
+          localStorage.setItem('username', e.target.value);
+        }}
       />
 
       <br />

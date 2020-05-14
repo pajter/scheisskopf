@@ -1,15 +1,18 @@
-import { Player, MandatoryAction, ActionClient } from '../../../_shared/types';
+import {
+  Player,
+  Bot,
+  ActionClient,
+  StateClientRoom,
+} from '../../../_shared/types';
 import { generateRandomString, getIterator } from '../../../_shared/util';
-
-import { State as StateRoom } from '../../../client/src/redux/room/types';
 
 import {
   Player as PlayerServer,
   State as StateServer,
+  Bot as BotServer,
   Store,
 } from '../redux/types';
 import { createStore } from '../redux/store';
-import { mustPlayerPick } from '../redux/util';
 import { getUsers } from './users';
 
 let rooms: Store[] = [];
@@ -59,10 +62,6 @@ const createPlayer = (
   state: StateServer,
   isOpponent: boolean = true
 ): Player => {
-  let mandatoryAction: MandatoryAction | undefined = undefined;
-  if (mustPlayerPick(player, state.tablePile)) {
-    mandatoryAction = 'pick';
-  }
   const idx = state.players.findIndex((p) => p.userId === player.userId);
 
   return {
@@ -82,15 +81,46 @@ const createPlayer = (
     // Open cards are always public
     cardsOpen: player.cardsOpen,
 
-    // Hand cards are invisible (`null`) for opponents
-    cardsHand: player.cardsHand.map((c) => (isOpponent ? null : c)),
+    // Hand cards are invisible (`undefined`) for opponents
+    cardsHand: player.cardsHand.map((c) => (isOpponent ? undefined : c)),
 
     // Blind cards are invisible to everyone, so only a number is passed
     cardsBlind: player.cardsBlind.map((c, idx) => (c === null ? null : idx)),
 
-    mandatoryAction,
+    mustPick: player.mustPick,
 
     turns: player.turns,
+  };
+};
+
+const createBot = (bot: BotServer, state: StateServer): Bot => {
+  const idx = state.players.findIndex((p) => p.userId === bot.userId);
+
+  return {
+    userId: bot.userId,
+    name: bot.name,
+
+    position: idx,
+
+    isFinished: bot.isFinished,
+    isDealer: bot.isDealer,
+    isScheisskopf: bot.isScheisskopf,
+    hasStartingCard: bot.hasStartingCard,
+
+    // Open cards are always public
+    cardsOpen: bot.cardsOpen,
+
+    // Hand cards are invisible (`undefined`)
+    cardsHand: bot.cardsHand.map(() => undefined),
+
+    // Blind cards are invisible to everyone, so only a number is passed
+    cardsBlind: bot.cardsBlind.map((c, idx) => (c === null ? null : idx)),
+
+    mustPick: bot.mustPick,
+
+    turns: bot.turns,
+
+    botSettings: bot.botSettings,
   };
 };
 
@@ -99,8 +129,8 @@ const createPlayer = (
  */
 const getStateRoomForPlayer = (
   state: StateServer,
-  player: PlayerServer
-): StateRoom => {
+  player: PlayerServer | Bot
+): StateClientRoom => {
   // Sort players to put current player at the start
   const playersIterator = getIterator(state.players);
   playersIterator.forward(({ userId }) => userId === player.userId);
@@ -119,7 +149,9 @@ const getStateRoomForPlayer = (
     players: playersIterator.getItems().map((p) => {
       const isOpponent = p.userId !== player.userId;
 
-      return createPlayer(p, state, isOpponent);
+      return 'botSettings' in p
+        ? createBot(p, state)
+        : createPlayer(p, state, isOpponent);
     }),
 
     spectators: state.spectactors,
@@ -135,6 +167,11 @@ export const syncRoom = (room: Store, action?: ActionClient) => {
 
   // Sync new state to all users in room
   roomState.players.forEach((player) => {
+    if ('botSettings' in player) {
+      // No need to sync to bots
+      return;
+    }
+
     const user = users.find((u) => u.userId === player.userId);
 
     if (user) {

@@ -1,9 +1,15 @@
 import { Store as ReduxStore } from 'redux';
 
-import { CardId, ActionClient, Spectator } from '../../../_shared/types';
+import {
+  CardId,
+  ActionClient,
+  Spectator,
+  BotSettings,
+} from '../../../_shared/types';
 import { GameError } from '../../../_shared/error';
 
 import { ScheissUser } from '../app/user';
+import { ScheissBot } from '../app/bot';
 
 export type GameState =
   | 'pre-deal'
@@ -40,7 +46,7 @@ export interface State {
    */
   startCardHandCount: number;
 
-  players: Player[];
+  players: (Player | Bot)[];
 
   spectactors: Spectator[];
 
@@ -54,16 +60,19 @@ export type ActionPrivate =
   | {
       type: '$JOIN';
       roomId?: string;
+      user: ScheissUser & { userId: string };
     }
   | {
       type: '$REJOIN';
     }
   | {
       type: '$USER_DISCONNECT';
-    };
+    }
+  | { type: '$ADD_BOT'; bot: ScheissBot }
+  | { type: '$REMOVE_BOT'; botId: string };
 
 export type Action = (ActionClient | ActionPrivate) & {
-  user: ScheissUser & { userId: string };
+  userId: string;
 };
 
 export type Store = ReduxStore<State, Action>;
@@ -87,12 +96,10 @@ export interface Player extends UserBase {
   isScheisskopf: boolean;
 
   hasStartingCard?: CardId;
+
+  mustPick: boolean;
 }
 
-export interface Bot extends Player {
+export interface Bot extends Omit<Player, 'connected' | 'lastPing'> {
   botSettings: BotSettings;
-}
-
-export interface BotSettings {
-  difficulty: 'easy' | 'normal' | 'hard';
 }

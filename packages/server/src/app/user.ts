@@ -11,6 +11,7 @@ import {
   findRoomForUserId,
   syncRoom,
 } from './rooms';
+import { ScheissBot } from './bot';
 
 const createUniqueUserId = (
   username: string,
@@ -90,7 +91,7 @@ export class ScheissUser {
       const room = createRoom();
 
       // Immediately join room, upon which the client gets room the room state
-      this.dispatch({ type: '$JOIN' }, room);
+      this.dispatch({ type: '$JOIN', user: this }, room);
 
       return { roomId: room.getState().roomId };
     });
@@ -121,6 +122,12 @@ export class ScheissUser {
         };
       }
 
+      if (roomState.players.length === 17) {
+        return {
+          error: createError('Max number of players reached!'),
+        };
+      }
+
       if (
         roomState.spectactors.find((player) => player.userId === this.userId)
       ) {
@@ -130,7 +137,7 @@ export class ScheissUser {
       }
 
       // Join room
-      this.dispatch({ type: '$JOIN' }, room);
+      this.dispatch({ type: '$JOIN', user: this }, room);
 
       return { roomId: room.getState().roomId };
     });
@@ -160,6 +167,34 @@ export class ScheissUser {
         return { error: createError(err.message) };
       }
       return {};
+    });
+
+    this.listenAndEmit('ADD_BOT', ({ roomId }) => {
+      const room = findRoomForId(roomId);
+      if (!room) {
+        return { error: createError('Unknown room!') };
+      }
+
+      if (room.getState().players.length === 17) {
+        return {
+          error: createError('Max number of players reached!'),
+        };
+      }
+
+      const bot = new ScheissBot(room);
+
+      this.dispatch({ type: '$ADD_BOT', bot });
+
+      return {
+        bot: {
+          botId: bot.userId,
+          name: bot.username,
+        },
+      };
+    });
+
+    this.listen('REMOVE_BOT', ({ botId }) => {
+      this.dispatch({ type: '$REMOVE_BOT', botId });
     });
 
     console.log('user initialized');
@@ -197,7 +232,7 @@ export class ScheissUser {
       return;
     }
 
-    room.dispatch({ ...action, user: this });
+    room.dispatch({ ...action, userId: this.userId });
 
     const actionClient = action.type.startsWith('$')
       ? undefined
