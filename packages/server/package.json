@@ -15,7 +15,7 @@
     "socket.io": "^2.3.0",
     "redux": "^4.0.5",
     "express": "^4.17.1",
-    "lodash": "^4.17.15"
+    "lodash": "^4.17.19"
   },
   "scripts": {
     "dev": "ts-node-dev --respawn --transpileOnly src/index.ts",
